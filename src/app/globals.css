@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* StoryKeeper Brand Design Tokens */
+    --paper: #FBF7F0;
+    --paper-2: #F3ECE0;
+    --ink: #1F1A17;
+    --muted: #6B625A;
+    --line: #E4DACB;
+
+    --terracotta: #B5472B;
+    --terracotta-hover: #9E3D24;
+    --terracotta-subtle: #F6EAE6;
+
+    --saffron: #E3A33B;
+    --saffron-hover: #C98B28;
+    --saffron-subtle: #FBF4E8;
+
+    --moss: #3F5B45;
+    --moss-hover: #324937;
+    --moss-subtle: #EBF0EC;
+
+    --plum: #5A3550;
+    --plum-hover: #482840;
+    --plum-subtle: #F2EBF0;
+
+    /* Shadcn Semantic Mapping to Warm Archive */
+    --background: var(--paper);
+    --foreground: var(--ink);
+
+    --card: #FFFFFF;
+    --card-foreground: var(--ink);
+
+    --popover: #FFFFFF;
+    --popover-foreground: var(--ink);
+
+    --primary: var(--terracotta);
+    --primary-foreground: #FFFFFF;
+
+    --secondary: var(--paper-2);
+    --secondary-foreground: var(--ink);
+
+    --muted-foreground: var(--muted);
+
+    --accent: var(--paper-2);
+    --accent-foreground: var(--ink);
+
+    --destructive: #B91C1C;
+    --destructive-foreground: #FFFFFF;
+
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--terracotta);
+
+    --radius: 16px;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+}
+
+/* Subtle Paper-grain Overlay Utility */
+.paper-grain {
+  position: relative;
+}
+
+.paper-grain::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  opacity: 0.035;
+  z-index: 999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid var(--terracotta);
+  outline-offset: 2px;
+}
+
+/* Editorial selection */
+::selection {
+  background-color: var(--terracotta-subtle);
+  color: var(--terracotta);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
