@@ -1,0 +1,368 @@
+// Prisma schema for StoryKeeper AI
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pg_trgm]
+}
+
+enum UserRole {
+  CONTRIBUTOR
+  ADMIN
+}
+
+enum StoryPermission {
+  PRIVATE
+  PUBLIC
+  RESEARCH_ONLY
+}
+
+enum DisplayPreference {
+  NAMED
+  ANONYMOUS
+}
+
+enum StoryStatus {
+  DRAFT
+  PROCESSING
+  NEEDS_REVIEW
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CollectionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum AiJobType {
+  TRANSCRIPTION
+  TRANSLATION
+  SUMMARY
+  KEYWORDS
+  THEMES
+}
+
+enum AiJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ModerationAction {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+  EDIT
+  PUBLISH
+  UNPUBLISH
+  ARCHIVE
+  STATUS_CHANGE
+}
+
+enum RemovalRequestType {
+  EDIT
+  REMOVE
+}
+
+enum RemovalRequestStatus {
+  OPEN
+  RESOLVED
+  DECLINED
+}
+
+model User {
+  id                String            @id @default(cuid())
+  name              String
+  email             String            @unique
+  emailVerified     Boolean           @default(false)
+  image             String?
+  role              UserRole          @default(CONTRIBUTOR)
+  preferredLanguage String            @default("en")
+  defaultPermission StoryPermission   @default(PUBLIC)
+  defaultDisplay    DisplayPreference @default(NAMED)
+  allowPublicEmail  Boolean           @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Better Auth relations
+  sessions          Session[]
+  accounts          Account[]
+
+  // Domain relations
+  stories           Story[]
+  moderationLogs    ModerationLog[]
+  consentLogs       ConsentLog[]
+  removalRequests   RemovalRequest[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+model Story {
+  id                 String            @id @default(cuid())
+  contributorId      String
+  contributor        User              @relation(fields: [contributorId], references: [id])
+  title              String
+  slug               String            @unique
+  description        String?           @db.Text
+  audioKey           String?
+  audioMimeType      String?
+  audioSizeBytes     Int?
+  audioDurationSec   Float?
+  originalLanguage   String
+  originalTranscript String            @db.Text
+  englishTranslation String            @db.Text
+  summary            String            @db.Text
+  region             String?
+  topic              String?
+  timePeriodLabel    String?
+  timePeriodStart    Int?
+  timePeriodEnd      Int?
+  interviewDate      DateTime?
+  collectionId       String?
+  collection         Collection?       @relation(fields: [collectionId], references: [id])
+  status             StoryStatus       @default(DRAFT)
+  permission         StoryPermission   @default(PUBLIC)
+  displayPreference  DisplayPreference @default(NAMED)
+  transcriptAi       Boolean           @default(false)
+  translationAi      Boolean           @default(false)
+  summaryAi          Boolean           @default(false)
+  aiReviewedAt       DateTime?
+  viewCount          Int               @default(0)
+  isSample           Boolean           @default(false)
+  submittedAt        DateTime?
+  publishedAt        DateTime?
+  deletedAt          DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  keywords           StoryKeyword[]
+  themes             StoryTheme[]
+  aiJobs             AiJob[]
+  moderationLogs     ModerationLog[]
+  consentLogs        ConsentLog[]
+  removalRequests    RemovalRequest[]
+  storyViews         StoryView[]
+  storyReports       StoryReport[]
+
+  @@index([status, permission, deletedAt])
+  @@index([contributorId])
+  @@index([collectionId])
+  @@index([slug])
+  @@index([originalLanguage])
+  @@index([timePeriodStart, timePeriodEnd])
+  @@index([isSample])
+}
+
+model Keyword {
+  id             String         @id @default(cuid())
+  name           String
+  normalizedName String         @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  stories        StoryKeyword[]
+
+  @@index([normalizedName])
+}
+
+model StoryKeyword {
+  storyId   String
+  keywordId String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  keyword   Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([storyId, keywordId])
+}
+
+model Theme {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  stories     StoryTheme[]
+
+  @@index([slug])
+}
+
+model StoryTheme {
+  storyId   String
+  themeId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  theme     Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([storyId, themeId])
+}
+
+model Collection {
+  id            String           @id @default(cuid())
+  name          String
+  slug          String           @unique
+  description   String           @db.Text
+  coverGradient String
+  coverImageUrl String?
+  motif         String
+  status        CollectionStatus @default(ACTIVE)
+  displayOrder  Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  stories       Story[]
+
+  @@index([slug])
+  @@index([status, displayOrder])
+}
+
+model AiJob {
+  id           String      @id @default(cuid())
+  storyId      String
+  story        Story       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  type         AiJobType
+  status       AiJobStatus @default(PENDING)
+  errorMessage String?     @db.Text
+  retryCount   Int         @default(0)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([storyId, status])
+}
+
+model ModerationLog {
+  id        String           @id @default(cuid())
+  storyId   String
+  story     Story            @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  adminId   String
+  admin     User             @relation(fields: [adminId], references: [id])
+  action    ModerationAction
+  note      String?          @db.Text
+  createdAt DateTime         @default(now())
+
+  @@index([storyId])
+  @@index([adminId])
+}
+
+model ConsentLog {
+  id            String            @id @default(cuid())
+  storyId       String
+  story         Story             @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User              @relation(fields: [userId], references: [id])
+  oldPermission StoryPermission
+  newPermission StoryPermission
+  oldDisplay    DisplayPreference
+  newDisplay    DisplayPreference
+  createdAt     DateTime          @default(now())
+
+  @@index([storyId])
+  @@index([userId])
+}
+
+model RemovalRequest {
+  id         String               @id @default(cuid())
+  storyId    String
+  story      Story                @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id])
+  type       RemovalRequestType
+  message    String               @db.Text
+  status     RemovalRequestStatus @default(OPEN)
+  createdAt  DateTime             @default(now())
+  resolvedAt DateTime?
+
+  @@index([storyId])
+  @@index([userId])
+  @@index([status])
+}
+
+model StoryView {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([storyId, createdAt])
+}
+
+model SearchLog {
+  id          String   @id @default(cuid())
+  query       String
+  filters     Json?
+  resultCount Int
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model StoryReport {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  reason    String
+  details   String?  @db.Text
+  email     String?
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+
+  @@index([storyId, status])
+}
