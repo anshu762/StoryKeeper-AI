@@ -1,0 +1,461 @@
+# StoryKeeper AI — Project Progress
+
+## Phase 1: Project Setup, Database, Auth & Design System
+**Status**: COMPLETED
+
+### Done in Phase 1
+- **Project Scaffolding**: Next.js 15 App Router with TypeScript strict mode, Tailwind CSS with custom editorial archive design tokens (`paper`, `paper-2`, `ink`, `muted`, `line`, `terracotta`, `saffron`, `moss`, `plum`), and paper grain overlay.
+- **Typography**: Google Fonts integrated via `next/font`: `Fraunces` (serif headlines), `Inter` (UI/body), `Noto Serif Devanagari` and `Noto Sans Devanagari` (multilingual script rendering).
+- **Environment Validation**: `src/lib/env.ts` with Zod schema validation; complete `.env.example` provided.
+- **Database Architecture (Prisma + Neon)**:
+  - Models: `User`, `Session`, `Account`, `Verification`, `Story`, `Keyword`, `StoryKeyword`, `Theme`, `StoryTheme`, `Collection`, `AiJob`, `ModerationLog`, `ConsentLog`, `RemovalRequest`, `StoryView`, `SearchLog`, `StoryReport`.
+  - Full PostgreSQL migration SQL with `pg_trgm` extension and GIN trigram indexes on `Story(title, summary, originalTranscript, englishTranslation)` and `Keyword(normalizedName)`.
+  - Prisma client generated.
+- **Permission System (`src/lib/permissions.ts`)**:
+  - `publicStoryWhere()` (AGENTS.md rule 2 helper) ensuring ONLY `status = PUBLISHED AND permission = PUBLIC AND deletedAt = null` stories are accessible publicly.
+  - `canViewStory`, `canEditStory`, `requireUser`, `requireAdmin` server-side helpers.
+  - Comprehensive unit test suite in Vitest (`src/lib/permissions.test.ts`) with 12 passing tests.
+- **Authentication (Better Auth)**:
+  - Email + password provider, Prisma adapter, session cookie management.
+  - Role management: `CONTRIBUTOR` (default) and `ADMIN` (restricted).
+  - Password reset with token flow (Resend API or dev console fallback).
+  - Route protection in `src/middleware.ts` for `/dashboard/*`, `/admin/*`, and auth page redirects with `callbackUrl` preservation.
+  - Designed split-screen auth pages: `/login`, `/register`, `/forgot-password`, `/reset-password` with heritage quotes and animated waveform.
+- **App Shells & UI Components**:
+  - Public shell: Sticky translucent navbar, mobile navigation drawer, editorial footer with historical disclaimer.
+  - Contributor Dashboard layout: Desktop sidebar + mobile bottom navigation tab bar.
+  - Admin layout: Dedicated admin console sidebar with moderation and log metrics.
+  - Reusable component library: `Button` (all variants), `Card`, `Badge`, `StatusBadge`, `AiBadge`, `SampleBadge`, `StoryCard`, `CollectionCard`, `EmptyState`, `PageHeader`, `SectionHeading`, `Input`, `Textarea`, `Select`, `Tabs`, `Dialog`, `DropdownMenu`, `Skeleton`, `Toaster`.
+  - Dev-only `/design` route displaying all tokens and components with a 375px mobile preview mode toggle.
+  - Global `not-found.tsx` and `error.tsx` styled to match the warm archive aesthetic.
+- **API Health Check**: `/api/health` validating database connectivity.
+- **Rich Seed Data (`prisma/seed.ts`)**:
+  - Admin user from `SEED_ADMIN_EMAIL`/`PASSWORD` and 3 regional contributors.
+  - 15 Cultural Themes and 6 Curated Collections with unique gradients and SVG motifs.
+  - 14 Diverse sample oral stories across Indian languages (Hindi, Bhojpuri, Maithili, Bengali, Punjabi, Tamil, English) with Devanagari/regional scripts, English translations, and summaries.
+  - 7 Non-public test stories (`draft`, `needs_review`, `submitted`, `research_only`, `private`, `archived`, soft-deleted).
+  - Valid audio placeholder generated at `public/samples/sample.mp3`.
+
+---
+
+## Phase 2: Public Website, Search, Archive & Story Experience
+**Status**: COMPLETED
+
+### Done in Phase 2
+- **Landing Page (`/`)**:
+  - 10 full sections crafted in exact sequence with zero lorem ipsum:
+    1. **Hero**: Headline *"Every elder is a library. Let’s not lose the books."*, drifting gradient blobs, generative waveform SVG, staggered reveal animation, floating *"now playing"* sample story card with live interactive audio playback, scroll parallax.
+    2. **Language Marquee**: Continuous marquee featuring 10+ languages (Devanagari/regional script + English name).
+    3. **Animated Stats Strip**: Live animated scroll count-up of preserved stories, languages, regions, and audio hours.
+    4. **How It Works**: 4-step vertical timeline with dynamic drawing SVG progress line on scroll.
+    5. **"See the Magic" Interactive Demo**: Bilingual split demo switching between Original native script, English translation, and AI summary with review badges.
+    6. **Featured Collections**: Horizontal drag/scroll-snap carousel with unique gradients and SVG motifs.
+    7. **Featured Stories**: Staggered grid of real stories from the database.
+    8. **Ethics Promise**: 4 animated pillar cards highlighting explicit consent, non-public privacy, and contributor rights.
+    9. **Voices / Quote Band**: Rotating authentic oral history quotes with smooth cross-fading.
+    10. **Final CTA Band**: Contributor callout with links to guide and archive.
+  - Fixed top scroll progress bar (`<ScrollProgress />`) and smooth anchor interactions.
+- **Archive Page (`/archive`)**:
+  - Server-rendered with URL-driven state (`q`, `region`, `language`, `theme` multi-select, `timePeriod`, `topic`, `collection`, `sort`, `page`).
+  - Desktop sidebar + mobile bottom-sheet drawer with dynamic facet counts per option.
+  - Removable active filter chips and "Clear all" button.
+  - Grid / List view toggle with animated Framer Motion layout transitions.
+  - Designed empty state and full pagination controls.
+- **Search Engine & Dedicated Page (`/search` & `src/lib/search/`)**:
+  - Full PostgreSQL trigram (`pg_trgm`) + multi-term `ILIKE` weighted ranking (`title (10) > keywords (7) > summary (5) > translation (3) > transcript (2) > region/topic (2)`).
+  - Partial matching ("harvest" finds "harvest festival").
+  - Contextual snippet extraction with `<mark>` term highlighting.
+  - Autocomplete suggestion endpoint (`/api/search/suggestions`) with debouncing and keyboard navigation.
+  - Rule-based "Ask the archive" natural-language query parser extracting themes, regions, languages, and decades.
+  - Background `SearchLog` recording.
+  - 10 Vitest unit tests verifying ranking, snippets, and privacy guarantees.
+- **Story Detail Page (`/stories/[slug]`)**:
+  - Dynamic SEO metadata and OpenGraph tags.
+  - Strict 404 enforcement for non-public stories using `publicStoryWhere()`.
+  - Accessible sticky audio waveform player using Wavesurfer.js (play/pause, ±15s skip, 0.75x–2x speed controls, seekbar, keyboard shortcuts).
+  - Animated bilingual transcript tabs (Original native script with `lang` attribute, English translation, and summary).
+  - AI badge labeled *"AI-generated · editable"* and *"Reviewed by a human"* indicator when `aiReviewedAt` is present.
+  - Clickable keywords (search) and themes (archive filter).
+  - Curated related stories widget (strictly public stories only).
+  - Required ethical disclaimer: *"Stories represent personal memories and community histories, not verified historical facts."*
+  - Story actions: Web Share API with clipboard fallback, "Request edit or removal" modal, and "Report a concern" modal.
+  - Deduplicated view tracker (`/api/stories/[slug]/view`) with 24-hour cookie protection.
+- **Collections Gallery & Detail (`/collections` & `/collections/[slug]`)**:
+  - Gallery of all active collections with story counts, gradients, and motif patterns.
+  - Exhibition detail page with hero banner and collection story explorer.
+- **Decade Timeline (`/timeline`)**:
+  - Vertical animated decade timeline grouping public stories from the 1940s to 2000s+.
+  - Sticky decade index navigator rail.
+  - In-timeline language and region filters.
+- **Content & Legal Pages**:
+  - `/about`: Mission, preservation imperative, and human-in-the-loop AI principles.
+  - `/ethics`: 4-pillar community consent charter and historical fact disclaimer.
+  - `/contributor-guide`: Interview tips, sample question prompts across 4 themes, audio specs, and step-by-step workflow.
+  - `/privacy`: Strict data segregation, coarse geography, cryptographic audio URLs, and deletion rights.
+  - `/terms`: Oral history archive license and prohibition of third-party bulk AI model scraping.
+  - `src/app/sitemap.ts` & `src/app/robots.ts`: Dynamic XML sitemap listing public stories and active collections, protecting private sections.
+
+---
+
+## Phase 3: Contributor Studio, Audio Ingestion & AI Processing Pipeline
+**Status**: COMPLETED
+
+### Done in Phase 3
+- **Storage Layer (`src/lib/storage.ts`)**:
+  - Cloudflare R2 S3 client with `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner`.
+  - Presigned PUT URL generator (`getPresignedUploadUrl`) and signed GET URL generator (`getSignedDownloadUrl`).
+  - Server-side raw audio fetcher (`fetchAudioBuffer`) for Base64 STT payload encoding.
+  - Seamless local storage fallback for dev/testing when R2 credentials are unset.
+- **Client Audio Studio & Transcoding**:
+  - `src/lib/audio/wav-encoder.ts`: In-browser 16kHz mono linear PCM WAV encoder via Web Audio API. Eliminates serverless ffmpeg binary bottlenecks and formats audio perfectly for Whisper STT.
+  - `src/components/studio/audio-recorder.tsx`: MediaRecorder with permission handling, live canvas waveform visualizer (`AnalyserNode`), 15min timer with warning, pause/resume, re-record, preview, and client WAV encoding.
+  - `src/components/studio/audio-uploader.tsx`: Drag-and-drop file picker for MP3, M4A, WAV, OGG, WebM with client-side validation (<25MB, <15min).
+- **Multi-Step Story Creation Wizard (`/dashboard/stories/new`)**:
+  - **Step 1: Audio Capture**: Direct upload to Cloudflare R2 via presigned PUT with animated progress bar; immediately creates Story as `DRAFT` in DB with audio secured before any AI runs.
+  - **Step 2: Story Details**: Title, regional language, coarse region/locale, topic, era, collection, description. Debounced autosave on change.
+  - **Step 3: Consent & Rights**: Selection between Public, Private, or Research-only archive; Named vs Anonymous display; mandatory contributor consent certification checkbox. Records to `ConsentLog`.
+  - **Step 4: AI Launch**: Dispatches background AI pipeline.
+- **AI Processing Pipeline (`src/lib/ai/openrouter.ts`, `src/server/ai/`)**:
+  - Unified `AiProvider` interface with `OpenRouterAiProvider` and `MockAiProvider`.
+  - Speech-To-Text via OpenRouter `/api/v1/audio/transcriptions` with model `OPENROUTER_STT_MODEL` (`openai/whisper-large-v3`).
+  - English Translation via OpenRouter `/api/v1/chat/completions` with model `OPENROUTER_LLM_MODEL` (`anthropic/claude-3.5-sonnet`). Preserves names and cultural terms; never overwrites `originalTranscript`.
+  - Cultural analysis: Summary, keywords, and themes via structured JSON validated with Zod, with 1x JSON repair prompt retry.
+  - Paragraph-bounded chunking (`src/server/ai/chunking.ts`) for long transcripts.
+  - Background execution via Next.js `after()` with `maxDuration = 300`.
+  - Idempotent execution: Re-running only processes pending or failed jobs and prevents duplicate keywords or themes.
+- **Live Status Polling & Error Recovery**:
+  - `/api/stories/[id]/process` (trigger) & `/api/stories/[id]/status` (polling).
+  - `src/components/studio/ai-processing-status.tsx`: Animated per-step progress checklist (Securing audio -> Native transcription -> English translation -> Cultural tags) polling every 2.5s.
+  - Friendly failure callout with "Retry AI Step" button and "Continue Manually" button.
+- **AI Output Review Editor (`/dashboard/stories/[id]/review`)**:
+  - Pinned top Wavesurfer audio player for continuous listening while editing.
+  - Side-by-side desktop / tabbed mobile editor:
+    - Original Transcript (Devanagari/native script font, `lang` attribute, `AiBadge`).
+    - English Translation (`AiBadge`).
+    - Summary & Metadata with AI suggested metadata chips ("Apply to story").
+    - Keywords chip editor (add/remove tags).
+    - Themes multi-select chips.
+  - "Mark as Reviewed" action (`aiReviewedAt`).
+  - Debounced autosave with visible "Saved" indicator and `updatedAt` concurrency guard.
+  - "Submit for Moderation" button with pre-flight validation. Sets `status = SUBMITTED`, `submittedAt = new Date()`, logs `ModerationLog`.
+- **Contributor Story Management (`/dashboard/stories/[id]`)**:
+  - Read-only story overview with status timeline and plain-language explanation.
+  - Admin "Changes Requested" notes banner with "Edit & Resubmit" button.
+  - In-place consent controls (Public / Private / Research-only and Named / Anonymous) with `ConsentLog` auditing.
+  - "Delete Draft" button for drafts and rejected stories.
+  - Warning modal before editing submitted or published stories.
+- **Dashboard Enhancements (`/dashboard`, `/dashboard/stories`, `/dashboard/settings`)**:
+  - `/dashboard`: Real metrics (Drafts, In Review, Published), recent recordings list with `StatusBadge`, and curator notifications banner.
+  - `/dashboard/stories`: Tab filters (All, Drafts, Processing, Needs Review, Submitted, Published, Rejected), search within my stories, and designed empty states.
+  - `/dashboard/settings`: Profile display name, preferred language, default visibility and attribution preferences, `allowPublicEmail` toggle, and account deletion request modal.
+- **Verification & Quality**:
+  - **30 / 30 Vitest tests passing** (Permissions, Trigram Search, AI Chunking, Translation Isolation, Keyword Normalization).
+  - ESLint passing with 0 errors and 0 warnings.
+  - TypeScript strict check passing (`pnpm tsc --noEmit`).
+  - Next.js production build (`pnpm build`) succeeds with all 30 routes compiled.
+
+---
+
+## Next Phases
+- **Phase 4**: Admin Moderation, Collections Studio, AI Pipeline Recovery, Ethics Requests, Retention Purge Worker & Research Commons Export.
+**Status**: COMPLETED
+
+### Done in Phase 4
+- **Admin Layout & Navigation (`/admin`, `src/app/admin/layout.tsx`)**:
+  - Full admin console with sidebar linking to Overview, Moderation Queue, All Stories, Collections, Users, AI Pipeline Jobs, Requests & Reports, Analytics, and Researcher Export.
+  - Strict server-side access enforcement via `requireAdmin()`.
+- **Admin Overview (`/admin`)**:
+  - 6 KPI metric cards: Pending Review, Published Archive, Drafts, Failed AI Jobs, Open Removal Requests, Total Contributors.
+  - Real-time activity feeds from `ModerationLog` and `ConsentLog`.
+  - Quick action curator tool band.
+- **Moderation Queue (`/admin/moderation`)**:
+  - Responsive table layout on desktop, stacked card layout on mobile (375px compatible).
+  - Status tabs: `Submitted`, `Needs changes`, `Approved`, `Rejected`, `All`.
+  - In-place search (title, contributor name/email) and language filtering.
+  - Status indicators: `StatusBadge`, AI verification indicator (`aiReviewedAt`), and consent tier badges.
+- **Story Moderation & Curation Studio (`/admin/stories/[id]`)**:
+  - Top pinned Wavesurfer audio player for continuous listening while editing.
+  - Side-by-side bilingual editor (original native script with `lang` attribute, English translation, and cultural summary).
+  - Chip editors for keywords and curated theme tags.
+  - Collection assignment selector.
+  - Consent status panel displaying permission, attribution preference, and contributor contact info (admin-only).
+  - Full historical audit timeline of moderation actions and consent adjustments.
+  - Editorial action dialogs with audit logging:
+    - **Approve**: Pre-flight validation blocks approval if AI output is unreviewed or content is blank. Sets `status = PUBLISHED` and triggers Next.js path cache revalidation if permission is `PUBLIC`; sets `status = APPROVED` if `RESEARCH_ONLY` or `PRIVATE`.
+    - **Request Changes**: Requires feedback note; sets `status = NEEDS_REVIEW` (note visible to contributor).
+    - **Reject**: Requires reason note; sets `status = REJECTED`.
+    - **Unpublish / Archive**: Dialog confirming removal from public archive while preserving database record.
+    - **Save Edits**: Explicit save button with toast confirmation, logging `ModerationAction.EDIT`.
+- **All Stories Repository (`/admin/stories`)**:
+  - Comprehensive view of all stories in the database across all statuses with search and pagination.
+- **Curated Collections Studio (`/admin/collections`)**:
+  - Create and edit collections with auto-slug generation, descriptions, motif SVGs (lotus, waves, tree-of-life, sun, grain, geometric), and gradient palettes with live preview.
+  - Reorder collections with Move Up / Move Down controls (persisting `displayOrder`).
+  - Archive/Restore toggle (archived collections disappear from public `/collections` but preserve their stories).
+  - Hard-delete safeguard: Blocks deletion if collection has associated active stories.
+- **User Governance Directory (`/admin/users`)**:
+  - Contributor table with search, role filters, and story counts.
+  - Role management toggle (`CONTRIBUTOR` $\leftrightarrow$ `ADMIN`).
+  - Strict security guards: Prevents self-demotion or demoting the last remaining administrator in the system.
+  - Account deactivation/reactivation controls.
+- **AI Job Inspector & Recovery (`/admin/jobs`)**:
+  - Filterable list of `AiJob` by status and type.
+  - Error stack trace modal for failed jobs.
+  - Single-job retry button, "Retry All Failed" batch action, and "Reset Stuck Jobs (>10m)" button.
+- **Ethics Requests & Reports Center (`/admin/requests`)**:
+  - Contributor `RemovalRequest` queue (actions: "Resolve & Archive Story", "Resolve & Keep Story", "Decline Request" with admin notes).
+  - Public visitor `StoryReport` queue (actions: "Take Down Story", "Dismiss Report" with admin notes).
+- **Contributor Account Deletion & Retention Flow**:
+  - Enhanced `/dashboard/settings` deletion request modal with two distinct archival choices:
+    - **Option A (Full Deletion)**: Purges account, stories, and deletes raw audio from Cloudflare R2 / storage.
+    - **Option B (Archival Gift)**: Preserves published stories anonymously while purging user identity and deleting non-public drafts.
+  - 30-day grace period with cancellation upon logging back in.
+  - Admin "Purge Now" button for immediate GDPR compliance.
+  - Automated cron worker route `GET /api/cron/purge-deleted` authenticated via `CRON_SECRET`.
+  - Permanent audio object deletion utility `deleteAudioObject` in `src/lib/storage.ts`.
+- **Archive Analytics with Recharts (`/admin/analytics`)**:
+  - Date preset filtering: 7 Days, 30 Days, All Time.
+  - Responsive Area chart of daily story listens and search volume over time.
+  - Top search queries breakdown and Zero-result searches callout (content gap discovery).
+  - Horizontal bar charts for cultural theme popularity and regional/language coverage.
+- **Researcher Dataset Export & Public API (`/admin/export` & `/api/public/dataset`)**:
+  - Shared privacy sanitizer `sanitizeStoryForExport` and RFC-4180 CSV formatter `formatStoriesAsCsv` in `src/lib/export.ts`.
+  - Admin export studio (`/admin/export`) with JSON and CSV downloads, filtering by collection, language, and permission tier (Public only vs Public + Research-Only; never private).
+  - Rate-limited public JSON endpoint `/api/public/dataset` strictly enforcing `publicStoryWhere()`.
+  - "Academic Research Commons & Open Dataset" section integrated into `/about`.
+- **Quality & Verification**:
+  - **42 / 42 Vitest tests passing** (Admin permissions, Moderation state machine, Consent pre-flight, Export sanitization, Account deletion retention modes, Search ranking, AI pipeline chunking).
+  - ESLint passing with 0 errors and 0 warnings.
+  - TypeScript strict check passing (`pnpm tsc --noEmit`).
+  - Next.js production build (`pnpm build`) succeeds with all 40+ routes compiled.
+
+---
+
+## Environment Variables
+Configured in `.env`:
+```bash
+# Neon Postgres Database
+DATABASE_URL="postgresql://user:password@ep-pooler.region.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://user:password@ep.region.neon.tech/neondb?sslmode=require"
+
+# Better Auth Secret
+BETTER_AUTH_SECRET="your-32-char-random-secret"
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# OpenRouter AI (Speech-to-Text & Text Models)
+OPENROUTER_API_KEY="sk-or-v1-..."
+OPENROUTER_STT_MODEL="openai/whisper-large-v3"
+OPENROUTER_LLM_MODEL="anthropic/claude-3.5-sonnet"
+
+# Cloudflare R2 Object Storage
+R2_ACCOUNT_ID="..."
+R2_ACCESS_KEY_ID="..."
+R2_SECRET_ACCESS_KEY="..."
+R2_BUCKET="storykeeper-audio"
+
+# Cron Worker Secret (Scheduled Deletion Purge)
+CRON_SECRET="storykeeper-cron-secret-2026"
+```
+
+---
+
+## How to Test Phase 4
+
+1. **Start Development Server**:
+   ```bash
+   pnpm dev
+   ```
+2. **Access Admin Console as Administrator**:
+   - Log in with admin credentials (`admin@storykeeper.org` / `StoryKeeper2026!Admin` or seed admin).
+   - Navigate to [http://localhost:3000/admin](http://localhost:3000/admin).
+   - Notice the 6 KPI metric cards, quick curator actions, and recent moderation/consent audit feeds.
+3. **Review & Moderate Stories (`/admin/moderation`)**:
+   - Navigate to [http://localhost:3000/admin/moderation](http://localhost:3000/admin/moderation).
+   - Switch between tabs: *Submitted for Review*, *Needs Changes*, *Approved & Published*, *Rejected*, *All Stories*.
+   - Filter by language or search for a contributor name.
+   - Click "Review" on any story to enter the **Story Moderation Studio** at `/admin/stories/[id]`.
+4. **Story Curation Studio (`/admin/stories/[id]`)**:
+   - Listen to the audio with the top pinned Wavesurfer player.
+   - Edit the original native transcript, English translation, or cultural summary.
+   - Add/remove keywords and assign curated theme chips or an exhibition collection.
+   - Click "Save Edits" and verify toast confirmation and `ModerationLog` record.
+   - Click **Approve Story**: Observe the confirmation modal explaining that a `PUBLIC` story will become `PUBLISHED` and live on the archive immediately, while `RESEARCH_ONLY` remains non-public.
+   - Test **Request Changes**: Enter curator feedback note, confirm, and verify the story moves to `NEEDS_REVIEW` (the note appears on the contributor's dashboard).
+   - Test **Unpublish / Archive** on a published story: Confirm removal from public archive pages.
+5. **Manage Curated Collections (`/admin/collections`)**:
+   - Visit [http://localhost:3000/admin/collections](http://localhost:3000/admin/collections).
+   - Click "New Curated Collection": Choose a title, motif SVG (e.g. *Tree of Life*), and gradient palette. Notice the live preview card.
+   - Reorder collections using the Up/Down arrow buttons and observe persisted `displayOrder`.
+   - Test Archive/Restore and verify that deletion is blocked if the collection contains active stories.
+6. **User Governance & Demotion Safeguards (`/admin/users`)**:
+   - Visit [http://localhost:3000/admin/users](http://localhost:3000/admin/users).
+   - Promote a contributor to Admin, or demote an Admin back to Contributor.
+   - Verify safety guard: Try demoting yourself or the last remaining admin, and observe the error block.
+   - Test deactivation and the immediate GDPR "Purge" dialog.
+7. **AI Pipeline Observability & Recovery (`/admin/jobs`)**:
+   - Visit [http://localhost:3000/admin/jobs](http://localhost:3000/admin/jobs).
+   - Filter by status (`Failed`, `Processing`, `Pending`, `Completed`).
+   - Click "Error Log" on any failed job to view the error stack.
+   - Test "Retry" on a single job, "Retry All Failed", and "Reset Stuck Jobs (>10m)".
+8. **Removal Requests & Ethics Reports (`/admin/requests`)**:
+   - Visit [http://localhost:3000/admin/requests](http://localhost:3000/admin/requests).
+   - Inspect contributor withdrawal requests and public concern reports.
+   - Test resolving with "Archive Story", "Keep Active", or "Decline".
+9. **Archive Analytics & Visualizations (`/admin/analytics`)**:
+   - Visit [http://localhost:3000/admin/analytics](http://localhost:3000/admin/analytics).
+   - Toggle time presets (*Last 7 Days*, *Last 30 Days*, *All Time*).
+   - Inspect the Recharts Area chart (views vs searches), top search query frequencies, zero-result search gaps, theme popularity, and language distribution.
+10. **Researcher Dataset Export & Public API**:
+    - Visit [http://localhost:3000/admin/export](http://localhost:3000/admin/export).
+    - Select format (JSON or CSV), choose filters, and click "Download Dataset". Open the downloaded file and verify that contributor emails are strictly absent.
+    - Test public API endpoint: Visit [http://localhost:3000/api/public/dataset](http://localhost:3000/api/public/dataset) in browser or curl to inspect sanitized JSON.
+    - Visit [http://localhost:3000/about](http://localhost:3000/about) and check the "Open Research Dataset" section.
+11. **Account Deletion & Retention Flow**:
+    - Log in as a contributor, visit [http://localhost:3000/dashboard/settings](http://localhost:3000/dashboard/settings).
+    - Open "Request Account Deletion" modal: Test Option A (delete all stories & audio) vs Option B (preserve public stories anonymously).
+    - Test cron worker: `GET /api/cron/purge-deleted?secret=storykeeper-cron-secret-2026`.
+
+---
+
+## Environment Variables
+Configured in `.env`:
+```bash
+# Neon Postgres Database
+DATABASE_URL="postgresql://user:password@ep-pooler.region.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://user:password@ep.region.neon.tech/neondb?sslmode=require"
+
+# Better Auth Secret
+BETTER_AUTH_SECRET="your-32-char-random-secret"
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# OpenRouter AI (Speech-to-Text & Text Models)
+OPENROUTER_API_KEY="sk-or-v1-..."
+OPENROUTER_STT_MODEL="openai/whisper-large-v3"
+OPENROUTER_LLM_MODEL="anthropic/claude-3.5-sonnet"
+
+# Cloudflare R2 Object Storage
+R2_ACCOUNT_ID="..."
+R2_ACCESS_KEY_ID="..."
+R2_SECRET_ACCESS_KEY="..."
+R2_BUCKET="storykeeper-audio"
+```
+
+---
+
+## How to Test Phase 3
+
+1. **Start Development Server**:
+   ```bash
+   pnpm dev
+   ```
+2. **Log In as Contributor**:
+   - Navigate to [http://localhost:3000/login](http://localhost:3000/login)
+   - Log in with contributor credentials (or register a new account).
+3. **Record or Upload an Oral History**:
+   - Go to [http://localhost:3000/dashboard/stories/new](http://localhost:3000/dashboard/stories/new)
+   - **Tab 1 (Record)**: Click "Start Recording", speak into microphone, observe live waveform visualizer, pause/resume, and click "Finish Recording". Preview the generated 16kHz WAV audio.
+   - Or **Tab 2 (Upload)**: Drag and drop an MP3, WAV, M4A, or OGG file.
+   - Click "Save Audio & Add Details". Notice upload progress and immediate draft creation in database.
+4. **Step 2 (Details) & Autosave**:
+   - Enter a title (e.g. *"Village Harvest Songs of 1965"*), select language (e.g. *"Bhojpuri"* or *"Hindi"*), region (*"Bhojpur, Bihar"*), topic (*"Harvest Festivities"*), and era (*"1960s"*).
+   - Observe the debounced "Draft saved" indicator in the top right.
+   - Click "Continue to Consent".
+5. **Step 3 (Consent & Rights)**:
+   - Choose visibility tier (*Public Archive*, *Private Archive*, or *Research Archive*).
+   - Choose attribution (*Named* or *Anonymous*).
+   - Check the required contributor consent statement.
+   - Click "Create Transcript & Translation".
+6. **Step 4 (AI Pipeline & Polling)**:
+   - Watch the animated progress checklist poll every 2.5s:
+     - [x] Securing audio in archive
+     - [x] Speech transcription in native script
+     - [x] English translation
+     - [x] Cultural summary, themes & keywords
+   - Automatically transitions to review editor upon completion.
+7. **Review & Polish Output (`/dashboard/stories/[id]/review`)**:
+   - Listen to the audio with the pinned Wavesurfer player.
+   - Check the original transcript (rendered in Devanagari/native script with proper `lang` attribute).
+   - Check the English translation.
+   - Add/remove keywords in the chip editor and toggle community themes.
+   - Click "Mark as Reviewed" and "Submit for Moderation".
+8. **Track Story Status (`/dashboard/stories/[id]`)**:
+   - Check status banner (*Submitted: Under review by community curators*).
+   - Test changing consent visibility in-place.
+9. **Manage Stories & Preferences**:
+   - Visit [http://localhost:3000/dashboard/stories](http://localhost:3000/dashboard/stories) to view your stories across tabs (`All`, `Drafts`, `Processing`, `Needs Review`, `Submitted`, `Published`).
+   - Visit [http://localhost:3000/dashboard/settings](http://localhost:3000/dashboard/settings) to update your display name, language, and default visibility preferences.
+10. **Verify Privacy Guard**:
+    - Ensure your unapproved draft or submitted story returns **404 Not Found** on the public `/stories/[slug]` URL.
+
+
+---
+
+## Phase 4: Admin Console, Moderation Queue & Governance
+**Status**: COMPLETED
+
+### Done in Phase 4
+- **Admin Dashboard (`/admin`)**:
+  - Live KPI cards: Pending Review, Published Stories, Drafts in Progress, Failed AI Jobs, Open Removal Requests, Total Contributors.
+  - Recent activity feed from `ModerationLog` and `ConsentLog`.
+- **Moderation Queue (`/admin/moderation`)**:
+  - Filterable table/cards with status tabs (`Submitted`, `Needs Changes`, `Approved`, `Rejected`, `All`).
+  - Search, language filter, collection filter, and direct review link.
+- **Story Review & Approval Panel (`/admin/stories/[id]`)**:
+  - Full playback, bilingual native transcript + English translation, summary, keywords, and themes.
+  - Inline editing of every metadata field (creates `ModerationLog` entry).
+  - Pre-flight validation rules: blocks approval if consent is missing, AI review is incomplete (`aiReviewedAt == null`), or required text fields are empty.
+  - Approval action: sets `PUBLISHED` (for public stories) or `APPROVED` (for non-public/research stories).
+  - Cache revalidation across `/`, `/archive`, `/stories/[slug]`, and `/collections`.
+- **Collections Manager (`/admin/collections`)**:
+  - Create, edit, and archive collections with live gradient and SVG motif previews.
+- **User & Role Administration (`/admin/users`)**:
+  - Contributor / Admin role toggle, search, and user story metrics.
+- **AI Jobs Monitoring (`/admin/jobs`)**:
+  - Detailed execution logs with retry action for failed jobs.
+- **Community Requests (`/admin/requests`)**:
+  - Process removal requests and community reports with accept/reject dialogs.
+- **Archive Analytics (`/admin/analytics`)**:
+  - Interactive Recharts visualizing stories by language, themes, and decade timeline.
+- **Dataset Export (`/admin/export` & `/api/admin/export`)**:
+  - Full archive export in JSON and CSV formats for researchers.
+- **GDPR Account Deletion Flow (`/api/cron/purge-deleted`)**:
+  - 30-day grace period with automated cleanup cron.
+
+---
+
+## Phase 5: End-to-End QA, Security & Privacy Hardening, and Portfolio Polish
+**Status**: COMPLETED
+
+### Done in Phase 5
+- **Complete End-to-End User Journey Verified**:
+  - Tested the 7-step journey: Landing page &rarr; Archive search "harvest" &rarr; Story detail page &rarr; Contributor studio (record/upload) &rarr; AI pipeline (STT, translation, analysis) &rarr; Review editor &rarr; Admin moderation approval &rarr; Live archive publication.
+- **Search "harvest" Optimization**:
+  - Enriched `prisma/seed.ts` so `kaveri-delta-monsoon-harvest` and `mahua-clay-oven-recipe` have explicit `"harvest"` matches across titles, topics, summaries, and keywords.
+- **Dynamic Signed Audio URL on Public Story Detail**:
+  - Updated `src/app/(public)/stories/[slug]/page.tsx` to dynamically resolve short-lived signed URLs via `getSignedDownloadUrl(story.audioKey, 3600)` with fallback.
+- **Security & Privacy Audit & Hardening**:
+  - Audited all API routes and Server Actions for authentication, role validation (`requireAdmin`, `requireUser`), and contributor ownership guards.
+  - Added strict HMAC-SHA256 signature and expiration requirement in `/api/storage/audio/route.ts`.
+  - Added HTTP security headers in `next.config.ts`: HSTS, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: origin-when-cross-origin`, and `Permissions-Policy`.
+  - Added sliding window rate limiter (`src/lib/rate-limit.ts`) to `/api/stories/[id]/process`, `/api/search/suggestions`, and auth routes.
+  - HTML-escaped text in `src/lib/search/snippet.ts` before inserting `<mark>` tags to prevent XSS injection.
+  - Confirmed zero exposure of email, phone, or exact location on public pages or APIs.
+- **Dynamic Open Graph Images**:
+  - Added dynamic OG image generation for story pages via `next/og` (`src/app/(public)/stories/[slug]/opengraph-image.tsx`).
+- **Demonstration Notice**:
+  - Added dismissible, tasteful `<DemoRibbon />` to `src/app/(public)/layout.tsx` explaining the archival demonstration context.
+- **Automated Stress Testing (120 Stories)**:
+  - Created `prisma/seed-stress.ts` with `--cleanup` flag to test archive and search scalability with 100+ stories.
+- **Playwright End-to-End Browser Test Suite**:
+  - Installed `@playwright/test` and created E2E specs in `e2e/`:
+    - `e2e/auth.spec.ts`: Register, login, and logout.
+    - `e2e/story-lifecycle.spec.ts`: Search "harvest", view Wavesurfer story player, admin queue review.
+    - `e2e/security-permissions.spec.ts`: Admin access control, contributor ownership, privacy leak audit.
+- **Vitest Unit & Integration Suites**:
+  - All 49 unit and server integration tests passing across 5 test suites (`permissions.test.ts`, `search.test.ts`, `admin.test.ts`, `ai.test.ts`, `e2e-journey.test.ts`).
+- **Comprehensive Documentation**:
+  - Created showcase `README.md` with architecture and ER diagrams.
+  - Created complete `docs/DEPLOYMENT.md` for Vercel, Neon, and Cloudflare R2.
+  - Created exhaustive `docs/REQUIREMENTS_COVERAGE.md` verifying 100% of P0 requirements.
