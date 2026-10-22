@@ -1,5 +1,6 @@
 import { PrismaClient, StoryStatus, StoryPermission, DisplayPreference, UserRole } from "@prisma/client";
 import { auth } from "../src/lib/auth";
+import { CLIENT_STORIES } from "./data/client-stories";
 
 const prisma = new PrismaClient();
 
@@ -89,7 +90,21 @@ async function main() {
     "CONTRIBUTOR"
   );
 
-  console.log("✓ Seeded admin & 3 contributor accounts");
+  const subhashini = await getOrCreateUser(
+    "subhashini@storykeeper.org",
+    "Subhashini Murthy",
+    "StoryKeeper2026!Subha",
+    "CONTRIBUTOR"
+  );
+
+  const harjinder = await getOrCreateUser(
+    "harjinder@storykeeper.org",
+    "Harjinder Gill",
+    "StoryKeeper2026!Harjinder",
+    "CONTRIBUTOR"
+  );
+
+  console.log("✓ Seeded admin & 5 regional contributor accounts");
 
   // 2. Themes (15 themes)
   const themeData = [
@@ -523,7 +538,119 @@ async function main() {
   }
   console.log(`✓ Seeded ${sampleStories.length} published sample stories`);
 
-  // 5. Test Non-public Stories (for moderation & privacy verification)
+  // 5. 75 Client Oral History Archive Stories (Real Human Stories)
+  const clientContributors = [sunita, rameshwar, aruna, subhashini, harjinder];
+  console.log(`⏳ Seeding ${CLIENT_STORIES.length} authentic client oral history stories...`);
+
+  // Pre-fetch all keywords to optimize insertion
+  const allKeywordsSet = new Set<string>();
+  CLIENT_STORIES.forEach((cs) => {
+    cs.keywords.forEach((kw) => allKeywordsSet.add(kw.trim()));
+  });
+
+  // Bulk upsert keywords
+  const keywordMap = new Map<string, string>();
+  const existingKeywords = await prisma.keyword.findMany();
+  existingKeywords.forEach((k) => keywordMap.set(k.normalizedName, k.id));
+
+  for (const kwName of allKeywordsSet) {
+    const normalizedName = kwName.toLowerCase().trim();
+    if (!keywordMap.has(normalizedName)) {
+      const created = await prisma.keyword.create({
+        data: { name: kwName, normalizedName },
+      });
+      keywordMap.set(normalizedName, created.id);
+    }
+  }
+
+  for (let i = 0; i < CLIENT_STORIES.length; i++) {
+    const cs = CLIENT_STORIES[i];
+    const contributor = clientContributors[i % clientContributors.length];
+    const targetCollectionId = collections[cs.collection] || collections["vanishing-professions"];
+
+    const story = await prisma.story.upsert({
+      where: { slug: cs.slug },
+      update: {
+        title: cs.title,
+        contributorId: contributor.id,
+        collectionId: targetCollectionId,
+        originalLanguage: cs.language,
+        originalTranscript: cs.text,
+        englishTranslation: cs.text,
+        summary: cs.summary,
+        region: cs.region,
+        topic: cs.topic,
+        timePeriodLabel: cs.decade,
+        timePeriodStart: cs.start,
+        timePeriodEnd: cs.end,
+        audioDurationSec: cs.duration,
+        displayPreference: (cs.displayPreference || "NAMED") as DisplayPreference,
+        status: StoryStatus.PUBLISHED,
+        permission: StoryPermission.PUBLIC,
+        isSample: false,
+        audioKey: "samples/sample.mp3",
+        audioMimeType: "audio/mpeg",
+        publishedAt: new Date(),
+        deletedAt: null,
+      },
+      create: {
+        title: cs.title,
+        slug: cs.slug,
+        contributorId: contributor.id,
+        collectionId: targetCollectionId,
+        originalLanguage: cs.language,
+        originalTranscript: cs.text,
+        englishTranslation: cs.text,
+        summary: cs.summary,
+        region: cs.region,
+        topic: cs.topic,
+        timePeriodLabel: cs.decade,
+        timePeriodStart: cs.start,
+        timePeriodEnd: cs.end,
+        audioDurationSec: cs.duration,
+        displayPreference: (cs.displayPreference || "NAMED") as DisplayPreference,
+        status: StoryStatus.PUBLISHED,
+        permission: StoryPermission.PUBLIC,
+        isSample: false,
+        audioKey: "samples/sample.mp3",
+        audioMimeType: "audio/mpeg",
+        publishedAt: new Date(),
+        deletedAt: null,
+      },
+    });
+
+    // Connect keywords
+    await prisma.storyKeyword.deleteMany({ where: { storyId: story.id } });
+    const kwToCreate = cs.keywords
+      .map((k) => keywordMap.get(k.toLowerCase().trim()))
+      .filter((id): id is string => Boolean(id))
+      .map((keywordId) => ({ storyId: story.id, keywordId }));
+
+    if (kwToCreate.length > 0) {
+      await prisma.storyKeyword.createMany({
+        data: kwToCreate,
+        skipDuplicates: true,
+      });
+    }
+
+    // Connect themes
+    await prisma.storyTheme.deleteMany({ where: { storyId: story.id } });
+    const themeToCreate = cs.themes
+      .map((slug) => themes[slug])
+      .filter((id): id is string => Boolean(id))
+      .map((themeId) => ({ storyId: story.id, themeId }));
+
+    if (themeToCreate.length > 0) {
+      await prisma.storyTheme.createMany({
+        data: themeToCreate,
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  console.log(`✓ Seeded ${CLIENT_STORIES.length} published client oral history stories`);
+
+  // 6. Test Non-public Stories (for moderation & privacy verification)
   const testStories = [
     {
       slug: "test-draft-story",

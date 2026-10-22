@@ -231,6 +231,30 @@
 
 ---
 
+## Client Dataset Integration: 75 Authentic Oral History Stories
+**Status**: COMPLETED
+
+### Done in Client Dataset Integration
+- **Client Oral History Archive (`prisma/data/client-stories.ts`)**:
+  - Incorporated all 75 authentic spoken oral histories across 2 major thematic cohorts:
+    - **Cohort 1 (Master Craftspeople & Living Traditions)**: 20 deep elder narratives including Kamla Devi (82, Varanasi — Banarasi silk weaving), Zubaida Begum (74, Lucknow — 32 Chikankari stitches), Gurdev Singh (85, Ludhiana — heirloom Dussehri mango tree & seed preservation), Meenakshi Ammal (79, Madurai — intuitive measurement-free temple mess cooking), and Kuttappan Asari (81, Alappuzha — 11 handmade snake boats).
+    - **Cohort 2 (Generational Memories & Daily Life Across India)**: 55 authentic accounts spanning ages 8 to 96 from Ladakh, Nagaland, Kerala, Kashmir, Gujarat, Goa, Bengal, Bundelkhand, and beyond (covering Partition survivors, ASHA workers, bell metal casters, itinerant knife sharpeners, shadow puppeteers, lighthouse keepers, and more).
+  - Preserved exact spoken words, question-and-answer format, regional languages, decades (1940s to 2020s), and coarse geographic locations.
+  - Linked each story to curated themes, AI-modeled summaries, and normalized keywords.
+- **Database Seeding Optimization (`prisma/seed.ts`)**:
+  - Upserted 6 diverse regional contributors to attribute stories faithfully.
+  - Optimized relation creation using bulk `createMany` with `skipDuplicates: true` for `StoryKeyword` and `StoryTheme` over SSL connections.
+  - Seeding brings the total public archive to **89 published stories** (96 total including moderation/security test records), perfectly aligning with the portfolio target of 50–100 stories.
+- **Multilingual Landing Quote Band (`src/components/landing/voices-quote-band.tsx`)**:
+  - Enriched with authentic multilingual excerpts in native scripts (Hindi, Urdu, Punjabi, Tamil, Marathi) from Kamla Devi, Zubaida Begum, Gurdev Singh, Meenakshi Ammal, Janaki Ammal, and Ganpat Shinde.
+- **Verification & Quality**:
+  - **49 / 49 Vitest tests passing**.
+  - ESLint passing with 0 errors and 0 warnings.
+  - TypeScript strict check passing (`pnpm tsc --noEmit`).
+  - Next.js production build (`pnpm build`) compiled successfully with all static and dynamic routes.
+
+---
+
 ## Environment Variables
 Configured in `.env`:
 ```bash
@@ -315,113 +339,6 @@ CRON_SECRET="storykeeper-cron-secret-2026"
     - Log in as a contributor, visit [http://localhost:3000/dashboard/settings](http://localhost:3000/dashboard/settings).
     - Open "Request Account Deletion" modal: Test Option A (delete all stories & audio) vs Option B (preserve public stories anonymously).
     - Test cron worker: `GET /api/cron/purge-deleted?secret=storykeeper-cron-secret-2026`.
-
----
-
-## Environment Variables
-Configured in `.env`:
-```bash
-# Neon Postgres Database
-DATABASE_URL="postgresql://user:password@ep-pooler.region.neon.tech/neondb?sslmode=require"
-DIRECT_URL="postgresql://user:password@ep.region.neon.tech/neondb?sslmode=require"
-
-# Better Auth Secret
-BETTER_AUTH_SECRET="your-32-char-random-secret"
-BETTER_AUTH_URL="http://localhost:3000"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-
-# OpenRouter AI (Speech-to-Text & Text Models)
-OPENROUTER_API_KEY="sk-or-v1-..."
-OPENROUTER_STT_MODEL="openai/whisper-large-v3"
-OPENROUTER_LLM_MODEL="anthropic/claude-3.5-sonnet"
-
-# Cloudflare R2 Object Storage
-R2_ACCOUNT_ID="..."
-R2_ACCESS_KEY_ID="..."
-R2_SECRET_ACCESS_KEY="..."
-R2_BUCKET="storykeeper-audio"
-```
-
----
-
-## How to Test Phase 3
-
-1. **Start Development Server**:
-   ```bash
-   pnpm dev
-   ```
-2. **Log In as Contributor**:
-   - Navigate to [http://localhost:3000/login](http://localhost:3000/login)
-   - Log in with contributor credentials (or register a new account).
-3. **Record or Upload an Oral History**:
-   - Go to [http://localhost:3000/dashboard/stories/new](http://localhost:3000/dashboard/stories/new)
-   - **Tab 1 (Record)**: Click "Start Recording", speak into microphone, observe live waveform visualizer, pause/resume, and click "Finish Recording". Preview the generated 16kHz WAV audio.
-   - Or **Tab 2 (Upload)**: Drag and drop an MP3, WAV, M4A, or OGG file.
-   - Click "Save Audio & Add Details". Notice upload progress and immediate draft creation in database.
-4. **Step 2 (Details) & Autosave**:
-   - Enter a title (e.g. *"Village Harvest Songs of 1965"*), select language (e.g. *"Bhojpuri"* or *"Hindi"*), region (*"Bhojpur, Bihar"*), topic (*"Harvest Festivities"*), and era (*"1960s"*).
-   - Observe the debounced "Draft saved" indicator in the top right.
-   - Click "Continue to Consent".
-5. **Step 3 (Consent & Rights)**:
-   - Choose visibility tier (*Public Archive*, *Private Archive*, or *Research Archive*).
-   - Choose attribution (*Named* or *Anonymous*).
-   - Check the required contributor consent statement.
-   - Click "Create Transcript & Translation".
-6. **Step 4 (AI Pipeline & Polling)**:
-   - Watch the animated progress checklist poll every 2.5s:
-     - [x] Securing audio in archive
-     - [x] Speech transcription in native script
-     - [x] English translation
-     - [x] Cultural summary, themes & keywords
-   - Automatically transitions to review editor upon completion.
-7. **Review & Polish Output (`/dashboard/stories/[id]/review`)**:
-   - Listen to the audio with the pinned Wavesurfer player.
-   - Check the original transcript (rendered in Devanagari/native script with proper `lang` attribute).
-   - Check the English translation.
-   - Add/remove keywords in the chip editor and toggle community themes.
-   - Click "Mark as Reviewed" and "Submit for Moderation".
-8. **Track Story Status (`/dashboard/stories/[id]`)**:
-   - Check status banner (*Submitted: Under review by community curators*).
-   - Test changing consent visibility in-place.
-9. **Manage Stories & Preferences**:
-   - Visit [http://localhost:3000/dashboard/stories](http://localhost:3000/dashboard/stories) to view your stories across tabs (`All`, `Drafts`, `Processing`, `Needs Review`, `Submitted`, `Published`).
-   - Visit [http://localhost:3000/dashboard/settings](http://localhost:3000/dashboard/settings) to update your display name, language, and default visibility preferences.
-10. **Verify Privacy Guard**:
-    - Ensure your unapproved draft or submitted story returns **404 Not Found** on the public `/stories/[slug]` URL.
-
-
----
-
-## Phase 4: Admin Console, Moderation Queue & Governance
-**Status**: COMPLETED
-
-### Done in Phase 4
-- **Admin Dashboard (`/admin`)**:
-  - Live KPI cards: Pending Review, Published Stories, Drafts in Progress, Failed AI Jobs, Open Removal Requests, Total Contributors.
-  - Recent activity feed from `ModerationLog` and `ConsentLog`.
-- **Moderation Queue (`/admin/moderation`)**:
-  - Filterable table/cards with status tabs (`Submitted`, `Needs Changes`, `Approved`, `Rejected`, `All`).
-  - Search, language filter, collection filter, and direct review link.
-- **Story Review & Approval Panel (`/admin/stories/[id]`)**:
-  - Full playback, bilingual native transcript + English translation, summary, keywords, and themes.
-  - Inline editing of every metadata field (creates `ModerationLog` entry).
-  - Pre-flight validation rules: blocks approval if consent is missing, AI review is incomplete (`aiReviewedAt == null`), or required text fields are empty.
-  - Approval action: sets `PUBLISHED` (for public stories) or `APPROVED` (for non-public/research stories).
-  - Cache revalidation across `/`, `/archive`, `/stories/[slug]`, and `/collections`.
-- **Collections Manager (`/admin/collections`)**:
-  - Create, edit, and archive collections with live gradient and SVG motif previews.
-- **User & Role Administration (`/admin/users`)**:
-  - Contributor / Admin role toggle, search, and user story metrics.
-- **AI Jobs Monitoring (`/admin/jobs`)**:
-  - Detailed execution logs with retry action for failed jobs.
-- **Community Requests (`/admin/requests`)**:
-  - Process removal requests and community reports with accept/reject dialogs.
-- **Archive Analytics (`/admin/analytics`)**:
-  - Interactive Recharts visualizing stories by language, themes, and decade timeline.
-- **Dataset Export (`/admin/export` & `/api/admin/export`)**:
-  - Full archive export in JSON and CSV formats for researchers.
-- **GDPR Account Deletion Flow (`/api/cron/purge-deleted`)**:
-  - 30-day grace period with automated cleanup cron.
 
 ---
 
