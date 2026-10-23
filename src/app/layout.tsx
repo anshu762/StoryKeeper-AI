@@ -33,7 +33,15 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : undefined) ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+      "https://storykeeper.ai"
+  ),
   title: {
     default: "StoryKeeper AI — Oral History & Cultural Memory Archive",
     template: "%s | StoryKeeper AI",

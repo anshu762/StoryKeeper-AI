@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+const defaultAppUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.APP_URL ||
+  process.env.BETTER_AUTH_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : undefined) ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+  "http://localhost:3000";
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   DIRECT_URL: z.string().min(1, "DIRECT_URL is required"),
@@ -7,8 +17,9 @@ const envSchema = z.object({
     .string()
     .min(16, "BETTER_AUTH_SECRET must be at least 16 characters"),
   AUTH_SECRET: z.string().optional(),
-  BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  BETTER_AUTH_URL: z.string().url().default(defaultAppUrl),
+  APP_URL: z.string().url().default(defaultAppUrl),
+  NEXT_PUBLIC_APP_URL: z.string().url().default(defaultAppUrl),
 
   // OpenRouter AI (Cost-effective Gemini Flash + Whisper STT)
   OPENROUTER_API_KEY: z.string().optional(),
