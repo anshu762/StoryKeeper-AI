@@ -4,9 +4,9 @@ import { publicStoryWhere } from "@/lib/permissions";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params;
+  const { id: idOrSlug } = await params;
 
   // 1. Ignore prefetch requests
   const purpose =
@@ -29,7 +29,7 @@ export async function POST(
   }
 
   // 3. Deduplicate via session cookie
-  const cookieName = `viewed_${slug}`;
+  const cookieName = `viewed_${idOrSlug}`;
   const alreadyViewed = request.cookies.get(cookieName);
   if (alreadyViewed) {
     return NextResponse.json({ status: "already_recorded" });
@@ -39,7 +39,7 @@ export async function POST(
     // 4. Only record view if story matches publicStoryWhere
     const story = await prisma.story.findFirst({
       where: {
-        slug,
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
         ...publicStoryWhere(),
       },
       select: { id: true, viewCount: true },

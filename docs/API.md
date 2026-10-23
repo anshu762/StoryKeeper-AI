@@ -80,10 +80,10 @@ This document logs all API routes implemented across StoryKeeper AI phases.
 ---
 
 ### 4. Deduplicated Story View Counter
-- **Path**: `/api/stories/[slug]/view`
+- **Path**: `/api/stories/[id]/view` (accepts story ID or slug)
 - **Method**: `POST`
 - **Authentication**: None (Public)
-- **Description**: Increments `viewCount` on `Story` and creates a `StoryView` entry. Ignores bots, crawlers, and prefetch requests (`Purpose: prefetch`). Deduplicated per client using a secure 24-hour cookie (`sk_view_<slug>`) to prevent reload inflation.
+- **Description**: Increments `viewCount` on `Story` and creates a `StoryView` entry. Ignores bots, crawlers, and prefetch requests (`Purpose: prefetch`). Deduplicated per client using a secure 24-hour cookie (`sk_view_<idOrSlug>`) to prevent reload inflation.
 - **Response Success (200)**:
   ```json
   {
@@ -103,7 +103,7 @@ This document logs all API routes implemented across StoryKeeper AI phases.
 ---
 
 ### 5. Report a Concern
-- **Path**: `/api/stories/[slug]/report`
+- **Path**: `/api/stories/[id]/report` (accepts story ID or slug)
 - **Method**: `POST`
 - **Authentication**: None (Public)
 - **Body**:
@@ -127,7 +127,7 @@ This document logs all API routes implemented across StoryKeeper AI phases.
 ---
 
 ### 6. Contributor Edit or Removal Request
-- **Path**: `/api/stories/[slug]/removal-request`
+- **Path**: `/api/stories/[id]/removal-request` (accepts story ID or slug)
 - **Method**: `POST`
 - **Authentication**: Optional (authenticated user ID linked if logged in)
 - **Body**:

@@ -11,9 +11,9 @@ const reportSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params;
+  const { id: idOrSlug } = await params;
 
   try {
     const body = await request.json();
@@ -21,7 +21,7 @@ export async function POST(
 
     const story = await prisma.story.findFirst({
       where: {
-        slug,
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
         ...publicStoryWhere(),
       },
       select: { id: true },

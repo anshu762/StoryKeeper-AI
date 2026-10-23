@@ -11,9 +11,9 @@ const removalSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params;
+  const { id: idOrSlug } = await params;
 
   try {
     const session = await auth.api.getSession({
@@ -30,8 +30,10 @@ export async function POST(
     const body = await request.json();
     const validated = removalSchema.parse(body);
 
-    const story = await prisma.story.findUnique({
-      where: { slug },
+    const story = await prisma.story.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
       select: { id: true, contributorId: true },
     });
 
