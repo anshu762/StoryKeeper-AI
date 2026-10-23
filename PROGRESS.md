@@ -376,3 +376,107 @@ CRON_SECRET="storykeeper-cron-secret-2026"
   - Created showcase `README.md` with architecture and ER diagrams.
   - Created complete `docs/DEPLOYMENT.md` for Vercel, Neon, and Cloudflare R2.
   - Created exhaustive `docs/REQUIREMENTS_COVERAGE.md` verifying 100% of P0 requirements.
+
+
+---
+
+## Phase 6: UX Polish, Performance Optimization, & Robustness Hardening
+**Status**: COMPLETED
+
+### Done in Phase 6
+- **Sticky Sidebars Across All Dashboards**:
+  - Made contributor dashboard desktop sidebar sticky (`sticky top-0 h-screen overflow-y-auto scrollbar-none`) in [src/app/dashboard/layout.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/dashboard/layout.tsx).
+  - Made admin console desktop sidebar sticky (`md:sticky md:top-0 md:h-screen md:overflow-y-auto scrollbar-none`) in [src/app/admin/layout.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/admin/layout.tsx).
+- **Admin Console Navigation & Back Flow**:
+  - Added dedicated, high-visibility "Exit to Dashboard" and "Public Archive" buttons directly in the Admin header in [src/app/admin/layout.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/admin/layout.tsx).
+  - Added persistent sidebar navigation at the bottom of the admin drawer with clear indicators for returning to Contributor Dashboard and Public Archive Home.
+- **Unified Editorial Select & Dropdown Styling (`SelectNative`)**:
+  - Created reusable [src/components/ui/select-native.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/ui/select-native.tsx) matching the warm editorial design system (`bg-white/80`, custom borders, focus ring, terracotta chevron).
+  - Fixed input text highlight selection styling (`::selection`, `input::selection`, `textarea::selection`) across the entire application to use high-contrast brand terracotta (`#B5472B`) and crisp white text.
+  - Replaced unstyled native selects in: Story Creation Wizard, Story Detail Manager, Settings Manager, Archive Filters, Timeline View, Moderation Queue, Story Curation Studio, and User Directory.
+- **Scrollbar Purification**:
+  - Suppressed all unsightly inner horizontal and vertical scrollbars across cards, lists, tabs, modals, and dropdowns in [src/app/globals.css](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/globals.css). Only the primary browser scrollbar remains visible and styled to the theme.
+- **Website Rendering & Navigation Performance Optimization**:
+  - Removed CPU/GPU-intensive fixed-viewport SVG `feTurbulence` overlay filter from `.paper-grain::before` in [src/app/globals.css](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/globals.css), eliminating Chromium composite lag and scrolling stutter.
+  - Reduced development query logging overhead in Prisma Client in [src/lib/db.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/db.ts).
+- **Account Deletion UI Removal**:
+  - Removed "Danger Zone: Account Deletion" and its modal completely from [src/components/studio/settings-manager.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/studio/settings-manager.tsx).
+- **Centralized User-Friendly Error Sanitizer**:
+  - Created [src/lib/errors.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/errors.ts) with `getFriendlyErrorMessage` preventing raw Prisma, PostgreSQL, P2002/P2025, or network error traces from ever being exposed to users in toasts and error dialogs.
+  - Sanitized error handling in story actions, studio managers, admin queues, and curation studio.
+- **Audio Upload & Capture Hardening**:
+  - Fixed MIME type handling in [src/app/api/upload/presigned/route.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/api/upload/presigned/route.ts) to correctly normalize MIME parameters (e.g., `audio/webm;codecs=opus`).
+  - Added support for `.webm`, `.flac`, `.aac`, `.3gp`, `.mp4` formats with proper extension mapping.
+  - Enhanced [src/components/studio/audio-uploader.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/studio/audio-uploader.tsx) and [src/components/studio/story-creation-wizard.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/studio/story-creation-wizard.tsx) for reliable drag-and-drop, duration inspection, and instant audio preview.
+  - Updated [src/lib/ai/openrouter.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/ai/openrouter.ts) STT payload to recognize `webm`, `m4a`, `ogg`, `flac`, `mp3`, and `wav`.
+
+---
+
+## Phase 7: Responsive Polish & Brand Favicon Integration
+**Status**: COMPLETED
+
+### Done in Phase 7
+- **Brand Favicon & Web App Icons**:
+  - Designed custom SVG favicon matching the brand terracotta radio logo (`#B5472B`) with broadcast wave geometry in [`src/app/icon.svg`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/icon.svg) and [`public/icon.svg`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/public/icon.svg).
+  - Generated Apple Touch Icon in [`src/app/apple-icon.svg`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/apple-icon.svg) for iOS/mobile homescreen bookmarks.
+  - Configured icon metadata in [`src/app/layout.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/layout.tsx).
+- **Admin Console Dual-Rendering (Desktop Table + Mobile Cards)**:
+  - Transformed wide multi-column data tables into responsive dual-render views: `hidden md:block` full tables on desktop and `md:hidden space-y-3` structured card views on mobile.
+  - **User Directory** ([`src/components/admin/user-directory.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/admin/user-directory.tsx)): Contributor avatars, role pills, story counts, join date, and action buttons stacked and touch-optimized.
+  - **AI Jobs Inspector** ([`src/components/admin/ai-jobs-inspector.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/admin/ai-jobs-inspector.tsx)): Story link, job type, animated status badge, retry count, time ago, error log modal trigger, and single retry action.
+  - **Story Moderation Queue** ([`src/app/admin/stories/page.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/admin/stories/page.tsx)): Title, contributor name, status badge, language badge, permission pill, and review action.
+  - **Collection Manager** ([`src/components/admin/collection-manager.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/admin/collection-manager.tsx)): Flex-wrap and spacing adjustments for action buttons so they never break narrow card viewports.
+  - **Analytics Charts** ([`src/components/admin/analytics-charts.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/admin/analytics-charts.tsx)): Responsive time range filter bar (`flex-col sm:flex-row items-start sm:items-center gap-3`) with wrapped period pill buttons.
+- **Public & Studio Layout Polish**:
+  - **Navigation Bar** ([`src/components/navigation/navbar.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/navigation/navbar.tsx)): Scaled brand typography (`text-lg sm:text-xl`) and horizontal padding (`px-3 sm:px-6`) for 320px screen breathing room.
+  - **Story Detail Tabs** ([`src/components/story/story-tabs.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/story/story-tabs.tsx)): Added horizontal touch-drag scrolling (`overflow-x-auto scrollbar-none`) and whitespace protection (`whitespace-nowrap shrink-0`) to transcript and summary tabs.
+  - **Interactive Magic Demo** ([`src/components/landing/magic-demo.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/landing/magic-demo.tsx)): Added horizontal scrolling container (`overflow-x-auto scrollbar-none max-w-full`) to the demo switcher tab strip.
+  - **Curated Collections Carousel** ([`src/components/landing/collections-carousel.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/landing/collections-carousel.tsx)): Replaced fixed `300px` card width with fluid `w-[82vw] sm:w-[360px] max-w-[360px]` for edge-to-edge viewing on narrow mobile devices.
+  - **Landing Hero Headline** ([`src/components/landing/hero-section.tsx`](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/landing/hero-section.tsx)): Adjusted fluid headline size (`text-3xl sm:text-5xl md:text-6xl lg:text-7xl`) preventing text clipping or overflow on 320px screens.
+- **Verification Results**:
+  - Vitest test suite: 49 / 49 tests passing.
+  - ESLint checks: 0 errors, 0 warnings.
+  - Next.js production build (`pnpm build`): 0 errors across all 30 routes.
+
+---
+
+## Phase 8: Cloudinary Storage, Gemini 2.0 Flash AI, UX Refinements & Admin Optimistic Updates
+**Status**: COMPLETED
+
+### Done in Phase 8
+1. **Password Reset Removal**:
+   - Commented out "Forgot password?" link on [src/app/(auth)/login/page.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/(auth)/login/page.tsx).
+   - Commented out `sendResetPassword` in [src/lib/auth.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/auth.ts).
+   - Replaced `/forgot-password` and `/reset-password` pages with a clear "Password Reset Disabled" notification and redirect buttons.
+2. **Cheapest, High-Speed Model (Gemini 2.0 Flash)**:
+   - Configured `OPENROUTER_LLM_MODEL="google/gemini-2.0-flash-001"` in `.env`, `.env.example`, [src/lib/env.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/env.ts), and [src/lib/ai/openrouter.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/ai/openrouter.ts).
+   - Gemini 2.0 Flash offers ultra-fast response latency (~$0.10/M tokens), avoiding high Claude API costs while delivering high accuracy on regional translations and structured JSON outputs.
+3. **Environment Variables Clean-Up**:
+   - Cleaned out obsolete Cloudflare R2 variables (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`).
+   - Cleaned out unused Resend variables (`RESEND_API_KEY`, `EMAIL_FROM`).
+4. **Cloudinary Audio Storage**:
+   - Integrated Cloudinary with streaming uploads, signed playback URLs, buffer fetching for OpenRouter STT, and asset deletion in [src/lib/storage.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/lib/storage.ts).
+   - Created [src/app/api/upload/file/route.ts](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/app/api/upload/file/route.ts) with direct Cloudinary upload streaming and local fallback.
+   - Removed `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner`.
+5. **Auto-Generated Auth Secret**:
+   - Generated a secure 64-character random hex secret and configured both `BETTER_AUTH_SECRET` and `AUTH_SECRET` in `.env`.
+6. **Premium Styled Dropdowns / Select Components**:
+   - Overhauled [src/components/ui/select.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/ui/select.tsx) and [src/components/ui/select-native.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/ui/select-native.tsx) to match the warm archive design system (`#FBF7F0` paper background, `#E4DACB` warm border, terracotta checkmarks, and smooth focus rings).
+   - Replaced native inputs with Radix UI `Select` in the story wizard, archive filters, timeline filters, admin curation studio, and settings manager.
+7. **Admin Analytics Page Polish**:
+   - Overhauled [src/components/admin/analytics-charts.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/admin/analytics-charts.tsx): removed harsh shadows, replaced with clean modern borders (`border-line/80 bg-white/95`).
+   - Added 4 shadow-free summary metric cards (Story Listens, Archive Queries, Discovery Gaps, Dialects & Tongues).
+   - Implemented smooth curve `AreaChart` (`type="monotone"`), `#F3ECE0` soft grid lines, active hover dots, and custom editorial tooltips.
+   - Added client mounting guard to prevent hydration and layout recalculation flickers.
+8. **Admin Add Collection Modal & Cards Unification**:
+   - Synchronized motifs and gradients in [src/components/admin/collection-manager.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/admin/collection-manager.tsx) with the public [src/components/collection/collection-card.tsx](file:///C:/Users/Anubhav%20Singh/Desktop/storykeeper/src/components/collection/collection-card.tsx).
+   - Embedded SVG `MotifPattern` renderers in admin collection list cards and live modal preview.
+   - Redesigned the "New Curated Collection" modal with visual motif selection and gradient palette buttons.
+9. **Instant Archive UI Updates (Zero Refresh Required)**:
+   - Added immediate optimistic UI updates (`setCollections(prev => prev.map(...))`) in `CollectionManager` for Archive / Restore toggles, deletions, and additions.
+   - Synchronized story status in `story-curation-studio.tsx` so unpublishing/archiving reflects immediately.
+   - Added `revalidatePath("/admin/collections")` across all collection server actions.
+- **Verification Results**:
+  - Vitest test suite: 49 / 49 tests passing.
+  - ESLint checks: 0 errors, 0 warnings.
+  - Next.js production build (`pnpm build`): 0 errors across all 31 routes.

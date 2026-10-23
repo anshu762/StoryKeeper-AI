@@ -6,6 +6,13 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin, Volume2, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SampleBadge } from "@/components/common/sample-badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatDuration } from "@/lib/utils";
 
 export interface TimelineStory {
@@ -119,18 +126,22 @@ export function TimelineView({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Language:
             </span>
-            <select
+            <Select
               value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="text-xs bg-paper border border-line rounded-lg px-2.5 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-terracotta"
+              onValueChange={(val) => setSelectedLanguage(val)}
             >
-              <option value="all">All Languages</option>
-              {availableLanguages.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-9 py-1 px-3 text-xs bg-white/90 rounded-xl border-line min-w-[140px]">
+                <SelectValue placeholder="All Languages" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Languages</SelectItem>
+                {availableLanguages.map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {l}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Region Filter */}
@@ -138,18 +149,22 @@ export function TimelineView({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Region:
             </span>
-            <select
+            <Select
               value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
-              className="text-xs bg-paper border border-line rounded-lg px-2.5 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-terracotta"
+              onValueChange={(val) => setSelectedRegion(val)}
             >
-              <option value="all">All Regions</option>
-              {availableRegions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-9 py-1 px-3 text-xs bg-white/90 rounded-xl border-line min-w-[140px]">
+                <SelectValue placeholder="All Regions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {availableRegions.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

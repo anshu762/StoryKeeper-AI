@@ -17,6 +17,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge } from "@/components/common/status-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { formatDistanceToNow, format } from "date-fns";
@@ -126,21 +133,25 @@ export function ModerationQueue({
         </div>
 
         <div className="flex items-center gap-2">
-          <select
-            value={selectedLanguage}
-            onChange={(e) => setSelectedLanguage(e.target.value)}
-            className="text-xs bg-white border border-line rounded-xl px-3 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-terracotta h-9"
+          <Select
+            value={selectedLanguage || "all"}
+            onValueChange={(val) => setSelectedLanguage(val === "all" ? "" : val)}
           >
-            <option value="">All Languages</option>
-            <option value="Hindi">Hindi</option>
-            <option value="Bhojpuri">Bhojpuri</option>
-            <option value="Maithili">Maithili</option>
-            <option value="Bengali">Bengali</option>
-            <option value="Punjabi">Punjabi</option>
-            <option value="Tamil">Tamil</option>
-            <option value="Telugu">Telugu</option>
-            <option value="English">English</option>
-          </select>
+            <SelectTrigger className="text-xs bg-white/90 border-line rounded-xl h-9 min-w-[140px]">
+              <SelectValue placeholder="All Languages" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Languages</SelectItem>
+              <SelectItem value="Hindi">Hindi</SelectItem>
+              <SelectItem value="Bhojpuri">Bhojpuri</SelectItem>
+              <SelectItem value="Maithili">Maithili</SelectItem>
+              <SelectItem value="Bengali">Bengali</SelectItem>
+              <SelectItem value="Punjabi">Punjabi</SelectItem>
+              <SelectItem value="Tamil">Tamil</SelectItem>
+              <SelectItem value="Telugu">Telugu</SelectItem>
+              <SelectItem value="English">English</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

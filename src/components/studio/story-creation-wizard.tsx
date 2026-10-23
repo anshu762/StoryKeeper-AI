@@ -23,6 +23,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SelectNative } from "@/components/ui/select-native";
 import { AudioRecorder } from "./audio-recorder";
 import { AudioUploader } from "./audio-uploader";
 import { AiProcessingStatus } from "./ai-processing-status";
@@ -33,6 +41,7 @@ import {
 } from "@/server/actions/story";
 import { StoryPermission, DisplayPreference } from "@prisma/client";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface CollectionOption {
   id: string;
@@ -179,9 +188,11 @@ export function StoryCreationWizard({
       setUploadProgress(100);
       toast.success("Audio saved! Your story is secured as a draft.");
       setCurrentStep(2);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[AUDIO SAVE ERROR]", err);
-      toast.error(err.message || "Failed to save audio recording");
+      toast.error(
+        getFriendlyErrorMessage(err, "Failed to save audio recording. Please try again.")
+      );
     } finally {
       setIsUploadingAudio(false);
     }
@@ -253,8 +264,10 @@ export function StoryCreationWizard({
       });
 
       setCurrentStep(4);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update consent preferences");
+    } catch (err: unknown) {
+      toast.error(
+        getFriendlyErrorMessage(err, "Failed to update consent preferences. Please try again.")
+      );
     }
   };
 
@@ -456,17 +469,21 @@ export function StoryCreationWizard({
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
                     Original Spoken Language <span className="text-terracotta">*</span>
                   </label>
-                  <select
+                  <Select
                     value={originalLanguage}
-                    onChange={(e) => setOriginalLanguage(e.target.value)}
-                    className="w-full text-sm bg-paper border border-line rounded-xl px-3 py-2.5 text-ink focus:outline-none focus:ring-1 focus:ring-terracotta cursor-pointer"
+                    onValueChange={(val) => setOriginalLanguage(val)}
                   >
-                    {LANGUAGES.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="bg-white/90 border-line">
+                      <SelectValue placeholder="Select language..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Era / Decade */}
@@ -474,18 +491,21 @@ export function StoryCreationWizard({
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
                     Approximate Time Period
                   </label>
-                  <select
-                    value={timePeriodLabel}
-                    onChange={(e) => setTimePeriodLabel(e.target.value)}
-                    className="w-full text-sm bg-paper border border-line rounded-xl px-3 py-2.5 text-ink focus:outline-none focus:ring-1 focus:ring-terracotta cursor-pointer"
+                  <Select
+                    value={timePeriodLabel || undefined}
+                    onValueChange={(val) => setTimePeriodLabel(val)}
                   >
-                    <option value="">Select an era...</option>
-                    {ERAS.map((era) => (
-                      <option key={era} value={era}>
-                        {era}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="bg-white/90 border-line">
+                      <SelectValue placeholder="Select an era..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ERAS.map((era) => (
+                        <SelectItem key={era} value={era}>
+                          {era}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -500,7 +520,7 @@ export function StoryCreationWizard({
                     value={region}
                     onChange={(e) => setRegion(e.target.value)}
                     placeholder="e.g. Madhubani, Mithila, Bihar"
-                    className="bg-paper text-sm border-line"
+                    className="bg-white/80 text-sm border-line"
                   />
                   <p className="text-[11px] text-muted-foreground">
                     Village/district/state is fine — please don&apos;t enter exact residential addresses.
@@ -516,7 +536,7 @@ export function StoryCreationWizard({
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="e.g., Traditional Recipes, Handloom Weaving, Migration"
-                    className="bg-paper text-sm border-line"
+                    className="bg-white/80 text-sm border-line"
                   />
                   <p className="text-[11px] text-muted-foreground">
                     Brief description of the cultural activity or memory.
@@ -530,18 +550,22 @@ export function StoryCreationWizard({
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block">
                     Add to Curated Collection (Optional)
                   </label>
-                  <select
-                    value={collectionId}
-                    onChange={(e) => setCollectionId(e.target.value)}
-                    className="w-full text-sm bg-paper border border-line rounded-xl px-3 py-2.5 text-ink focus:outline-none focus:ring-1 focus:ring-terracotta cursor-pointer"
+                  <Select
+                    value={collectionId || "none"}
+                    onValueChange={(val) => setCollectionId(val === "none" ? "" : val)}
                   >
-                    <option value="">None (General Archive)</option>
-                    {collections.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="bg-white/90 border-line">
+                      <SelectValue placeholder="None (General Archive)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (General Archive)</SelectItem>
+                      {collections.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 

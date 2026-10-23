@@ -21,11 +21,19 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge, StoryStatusType } from "@/components/common/status-badge";
 import { WavesurferPlayer } from "@/components/story/wavesurfer-player";
 import { updateStoryConsent, deleteStoryDraft } from "@/server/actions/story";
 import { StoryPermission, DisplayPreference } from "@prisma/client";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface StoryDetailManagerProps {
   story: {
@@ -108,8 +116,10 @@ export function StoryDetailManager({
       setCurrentPermission(newPerm);
       setCurrentDisplay(newDisp);
       toast.success("Permission settings updated! Changes logged.");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update permission");
+    } catch (err: unknown) {
+      toast.error(
+        getFriendlyErrorMessage(err, "Failed to update permission settings.")
+      );
     } finally {
       setIsUpdatingConsent(false);
     }
@@ -125,8 +135,10 @@ export function StoryDetailManager({
       await deleteStoryDraft(story.id);
       toast.success("Draft story deleted.");
       router.push("/dashboard/stories");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete draft");
+    } catch (err: unknown) {
+      toast.error(
+        getFriendlyErrorMessage(err, "Failed to delete draft. Please try again.")
+      );
       setIsDeletingDraft(false);
     }
   };
@@ -335,44 +347,52 @@ export function StoryDetailManager({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
                   Visibility Tier
                 </label>
-                <select
+                <Select
                   value={currentPermission}
                   disabled={isUpdatingConsent}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     handleConsentChange(
-                      e.target.value as StoryPermission,
+                      val as StoryPermission,
                       currentDisplay
                     )
                   }
-                  className="w-full text-xs bg-paper-2 border border-line rounded-lg px-2.5 py-2 text-ink cursor-pointer"
                 >
-                  <option value="PUBLIC">Public Archive (Visible to all)</option>
-                  <option value="PRIVATE">Private Archive (Family only)</option>
-                  <option value="RESEARCH_ONLY">Research Archive (Academic export)</option>
-                </select>
+                  <SelectTrigger className="bg-white/90 border-line text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PUBLIC">Public Archive (Visible to all)</SelectItem>
+                    <SelectItem value="PRIVATE">Private Archive (Family only)</SelectItem>
+                    <SelectItem value="RESEARCH_ONLY">Research Archive (Academic export)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
                   Attribution
                 </label>
-                <select
+                <Select
                   value={currentDisplay}
                   disabled={isUpdatingConsent}
-                  onChange={(e) =>
+                  onValueChange={(val) =>
                     handleConsentChange(
                       currentPermission,
-                      e.target.value as DisplayPreference
+                      val as DisplayPreference
                     )
                   }
-                  className="w-full text-xs bg-paper-2 border border-line rounded-lg px-2.5 py-2 text-ink cursor-pointer"
                 >
-                  <option value="NAMED">Named Contributor</option>
-                  <option value="ANONYMOUS">Anonymous Contributor</option>
-                </select>
+                  <SelectTrigger className="bg-white/90 border-line text-xs h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NAMED">Named Contributor</SelectItem>
+                    <SelectItem value="ANONYMOUS">Anonymous Contributor</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/permissions";
 import { Download, FileText, ShieldCheck, Database, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SelectNative } from "@/components/ui/select-native";
 
 export const dynamic = "force-dynamic";
 
@@ -132,27 +133,21 @@ export default async function AdminExportPage() {
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">
                 Filter by Collection (Optional)
               </label>
-              <select
-                name="collection"
-                className="w-full text-xs bg-paper border border-line rounded-xl px-3 py-2.5 text-ink"
-              >
+              <SelectNative name="collection">
                 <option value="">All Collections</option>
                 {collections.map((col) => (
                   <option key={col.id} value={col.id}>
                     {col.name}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
 
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">
                 Filter by Language (Optional)
               </label>
-              <select
-                name="language"
-                className="w-full text-xs bg-paper border border-line rounded-xl px-3 py-2.5 text-ink"
-              >
+              <SelectNative name="language">
                 <option value="">All Regional Languages</option>
                 <option value="Hindi">Hindi</option>
                 <option value="Bhojpuri">Bhojpuri</option>
@@ -162,7 +157,7 @@ export default async function AdminExportPage() {
                 <option value="Tamil">Tamil</option>
                 <option value="Telugu">Telugu</option>
                 <option value="English">English</option>
-              </select>
+              </SelectNative>
             </div>
           </div>
 

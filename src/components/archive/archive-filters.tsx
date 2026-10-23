@@ -15,6 +15,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArchiveFacets } from "@/lib/search/facets";
 import { SearchFilters, StorySortOption } from "@/lib/search/types";
 
@@ -437,18 +444,22 @@ export function ArchiveFilters({
           {/* Sort Selector */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground hidden sm:inline">Sort:</span>
-            <select
+            <Select
               value={sortValue}
-              onChange={(e) =>
-                updateParam("sort", e.target.value as StorySortOption)
+              onValueChange={(val) =>
+                updateParam("sort", val as StorySortOption)
               }
-              className="text-xs bg-paper border border-line rounded-lg px-2.5 py-1.5 text-ink focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="most_viewed">Most viewed</option>
-              <option value="relevance">Relevance</option>
-            </select>
+              <SelectTrigger className="h-9 py-1 px-3 text-xs bg-white/90 rounded-xl border-line min-w-[130px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="most_viewed">Most viewed</SelectItem>
+                <SelectItem value="relevance">Relevance</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* View Mode Toggle */}

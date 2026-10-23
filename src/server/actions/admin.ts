@@ -23,6 +23,7 @@ function revalidatePublicPages(slug?: string) {
   try {
     revalidatePath("/archive");
     revalidatePath("/collections");
+    revalidatePath("/admin/collections");
     revalidatePath("/search");
     revalidatePath("/timeline");
     revalidatePath("/sitemap.xml");
@@ -303,6 +304,9 @@ export async function approveStory(storyId: string, note?: string) {
   });
 
   revalidatePublicPages(story.slug);
+  revalidatePath("/admin/stories");
+  revalidatePath(`/admin/stories/${storyId}`);
+  revalidatePath("/admin/moderation");
   return { success: true, story: updated };
 }
 
@@ -347,6 +351,9 @@ export async function requestStoryChanges(storyId: string, note: string) {
   });
 
   revalidatePublicPages(story.slug);
+  revalidatePath("/admin/stories");
+  revalidatePath(`/admin/stories/${storyId}`);
+  revalidatePath("/admin/moderation");
   return { success: true, story: updated };
 }
 
@@ -391,6 +398,9 @@ export async function rejectStory(storyId: string, note: string) {
   });
 
   revalidatePublicPages(story.slug);
+  revalidatePath("/admin/stories");
+  revalidatePath(`/admin/stories/${storyId}`);
+  revalidatePath("/admin/moderation");
   return { success: true, story: updated };
 }
 
@@ -429,6 +439,9 @@ export async function unpublishStory(storyId: string, note?: string) {
   });
 
   revalidatePublicPages(story.slug);
+  revalidatePath("/admin/stories");
+  revalidatePath(`/admin/stories/${storyId}`);
+  revalidatePath("/admin/moderation");
   return { success: true, story: updated };
 }
 

@@ -27,6 +27,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SelectNative } from "@/components/ui/select-native";
 import { StatusBadge } from "@/components/common/status-badge";
 import { WavesurferPlayer } from "@/components/story/wavesurfer-player";
 import {
@@ -46,6 +54,7 @@ import {
 } from "@prisma/client";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface StoryCurationStudioProps {
   story: {
@@ -133,6 +142,11 @@ export function StoryCurationStudio({
     story.themes.map((t) => t.theme.id)
   );
   const [isAiReviewed, setIsAiReviewed] = useState(Boolean(story.aiReviewedAt));
+  const [status, setStatus] = useState<StoryStatus>(story.status);
+
+  React.useEffect(() => {
+    setStatus(story.status);
+  }, [story.status]);
 
   // Keyword input
   const [newKeyword, setNewKeyword] = useState("");
@@ -208,7 +222,7 @@ export function StoryCurationStudio({
       toast.success("Story changes saved successfully");
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save story");
+      toast.error(getFriendlyErrorMessage(err, "Failed to save story"));
     } finally {
       setIsSaving(false);
     }
@@ -218,6 +232,7 @@ export function StoryCurationStudio({
   const handleApprove = async () => {
     setIsApproving(true);
     try {
+      setStatus("PUBLISHED");
       await approveStory(story.id, approveNote);
       toast.success(
         permission === "PUBLIC"
@@ -227,7 +242,8 @@ export function StoryCurationStudio({
       setShowApproveDialog(false);
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Approval failed");
+      setStatus(story.status);
+      toast.error(getFriendlyErrorMessage(err, "Approval failed"));
     } finally {
       setIsApproving(false);
     }
@@ -241,12 +257,14 @@ export function StoryCurationStudio({
     }
     setIsRequestingChanges(true);
     try {
+      setStatus("NEEDS_REVIEW");
       await requestStoryChanges(story.id, changesNote);
       toast.success("Changes requested. Contributor notified.");
       setShowChangesDialog(false);
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to request changes");
+      setStatus(story.status);
+      toast.error(getFriendlyErrorMessage(err, "Failed to request changes"));
     } finally {
       setIsRequestingChanges(false);
     }
@@ -260,12 +278,14 @@ export function StoryCurationStudio({
     }
     setIsRejecting(true);
     try {
+      setStatus("REJECTED");
       await rejectStory(story.id, rejectNote);
       toast.success("Story marked as rejected.");
       setShowRejectDialog(false);
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Rejection failed");
+      setStatus(story.status);
+      toast.error(getFriendlyErrorMessage(err, "Rejection failed"));
     } finally {
       setIsRejecting(false);
     }
@@ -275,18 +295,20 @@ export function StoryCurationStudio({
   const handleUnpublish = async () => {
     setIsUnpublishing(true);
     try {
+      setStatus("ARCHIVED");
       await unpublishStory(story.id, unpublishNote);
       toast.success("Story unpublished and moved to archive.");
       setShowUnpublishDialog(false);
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Unpublish failed");
+      setStatus(story.status);
+      toast.error(getFriendlyErrorMessage(err, "Unpublish failed"));
     } finally {
       setIsUnpublishing(false);
     }
   };
 
-  const isPublished = story.status === "PUBLISHED";
+  const isPublished = status === "PUBLISHED";
   const canPublishDirectly = isAiReviewed && title && originalTranscript && englishTranslation;
 
   return (
@@ -305,7 +327,7 @@ export function StoryCurationStudio({
             <h1 className="font-serif text-2xl font-bold text-ink">
               Story Moderation & Curation Studio
             </h1>
-            <StatusBadge status={story.status} />
+            <StatusBadge status={status} />
           </div>
         </div>
 
@@ -578,32 +600,40 @@ export function StoryCurationStudio({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1.5">
                   Access & Visibility Tier
                 </label>
-                <select
+                <Select
                   value={permission}
-                  onChange={(e) => setPermission(e.target.value as StoryPermission)}
-                  className="w-full text-xs bg-paper border border-line rounded-xl px-3 py-2 text-ink"
+                  onValueChange={(val) => setPermission(val as StoryPermission)}
                 >
-                  <option value="PUBLIC">PUBLIC — Open Digital Archive</option>
-                  <option value="RESEARCH_ONLY">RESEARCH_ONLY — Academic / Export Only</option>
-                  <option value="PRIVATE">PRIVATE — Hidden from Public Archive</option>
-                </select>
+                  <SelectTrigger className="w-full text-xs bg-paper border border-line rounded-xl h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PUBLIC">PUBLIC — Open Digital Archive</SelectItem>
+                    <SelectItem value="RESEARCH_ONLY">RESEARCH_ONLY — Academic / Export Only</SelectItem>
+                    <SelectItem value="PRIVATE">PRIVATE — Hidden from Public Archive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1.5">
                   Contributor Attribution
                 </label>
-                <select
+                <Select
                   value={displayPreference}
-                  onChange={(e) => setDisplayPreference(e.target.value as DisplayPreference)}
-                  className="w-full text-xs bg-paper border border-line rounded-xl px-3 py-2 text-ink"
+                  onValueChange={(val) => setDisplayPreference(val as DisplayPreference)}
                 >
-                  <option value="NAMED">NAMED — Display Full Contributor Name</option>
-                  <option value="ANONYMOUS">ANONYMOUS — Display as Community Elder</option>
-                </select>
+                  <SelectTrigger className="w-full text-xs bg-paper border border-line rounded-xl h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NAMED">NAMED — Display Full Contributor Name</SelectItem>
+                    <SelectItem value="ANONYMOUS">ANONYMOUS — Display as Community Elder</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="p-3 rounded-xl bg-paper-2 border border-line/60 space-y-1 text-[11px] text-muted">
@@ -619,23 +649,27 @@ export function StoryCurationStudio({
           </div>
 
           {/* Curated Collection Assignment */}
-          <div className="bg-white border border-line rounded-2xl p-5 shadow-warm space-y-3">
+          <div className="bg-white border border-line rounded-2xl p-5 shadow-xs space-y-3">
             <h2 className="font-serif text-sm font-bold text-ink flex items-center gap-2">
               <Layers className="h-4 w-4 text-saffron" />
               <span>Exhibition Collection</span>
             </h2>
-            <select
-              value={collectionId}
-              onChange={(e) => setCollectionId(e.target.value)}
-              className="w-full text-xs bg-paper border border-line rounded-xl px-3 py-2 text-ink"
+            <Select
+              value={collectionId || "none"}
+              onValueChange={(val) => setCollectionId(val === "none" ? "" : val)}
             >
-              <option value="">No Collection Assigned</option>
-              {availableCollections.map((col) => (
-                <option key={col.id} value={col.id}>
-                  {col.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full text-xs bg-paper border border-line rounded-xl h-9">
+                <SelectValue placeholder="No Collection Assigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Collection Assigned</SelectItem>
+                {availableCollections.map((col) => (
+                  <SelectItem key={col.id} value={col.id}>
+                    {col.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Metadata Card: Region, Topic, Era */}

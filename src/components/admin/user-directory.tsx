@@ -18,11 +18,20 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SelectNative } from "@/components/ui/select-native";
 import { updateUserRole, toggleUserStatus } from "@/server/actions/admin";
 import { adminPurgeUser } from "@/server/actions/retention";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { UserRole } from "@prisma/client";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface UserItem {
   id: string;
@@ -75,7 +84,7 @@ export function UserDirectory({
       );
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to change role");
+      toast.error(getFriendlyErrorMessage(err, "Failed to change user role"));
     } finally {
       setLoadingUserId(null);
     }
@@ -93,7 +102,7 @@ export function UserDirectory({
       );
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
+      toast.error(getFriendlyErrorMessage(err, "Failed to update account status"));
     } finally {
       setLoadingUserId(null);
     }
@@ -108,7 +117,7 @@ export function UserDirectory({
       setPurgeUserTarget(null);
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to purge user");
+      toast.error(getFriendlyErrorMessage(err, "Failed to purge user"));
     } finally {
       setIsPurging(false);
     }
@@ -142,20 +151,24 @@ export function UserDirectory({
         </div>
 
         <div className="flex items-center gap-2">
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="text-xs bg-white border border-line rounded-xl px-3 py-2 text-ink h-9"
+          <Select
+            value={roleFilter || "all"}
+            onValueChange={(val) => setRoleFilter(val === "all" ? "" : val)}
           >
-            <option value="">All Roles</option>
-            <option value="CONTRIBUTOR">Contributors</option>
-            <option value="ADMIN">Administrators</option>
-          </select>
+            <SelectTrigger className="text-xs bg-white/90 border-line rounded-xl h-9 min-w-[130px]">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="CONTRIBUTOR">Contributors</SelectItem>
+              <SelectItem value="ADMIN">Administrators</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl border border-line bg-white shadow-warm overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-2xl border border-line bg-white shadow-warm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-paper-2 border-b border-line text-[11px] font-semibold text-muted uppercase tracking-wider">
@@ -265,7 +278,7 @@ export function UserDirectory({
                           {isDeactivated ? "Reactivate" : "Deactivate"}
                         </Button>
 
-                        {/* GDPR Immediate Purge Button (Available for deactivated accounts) */}
+                        {/* GDPR Immediate Purge Button */}
                         {isDeactivated && (
                           <Button
                             variant="outline"
@@ -285,6 +298,112 @@ export function UserDirectory({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards View */}
+      <div className="md:hidden space-y-3">
+        {filteredUsers.length === 0 ? (
+          <div className="p-8 text-center text-muted text-xs bg-white rounded-2xl border border-line">
+            No users found matching your search.
+          </div>
+        ) : (
+          filteredUsers.map((u) => {
+            const isSelf = u.id === currentAdminId;
+            const isDeactivated = u.deletedAt !== null;
+            const isLoading = loadingUserId === u.id;
+
+            return (
+              <div
+                key={u.id}
+                className="bg-white border border-line rounded-2xl p-4 shadow-xs space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-sm text-ink flex items-center gap-1.5">
+                      {u.name}
+                      {isSelf && (
+                        <span className="text-[10px] bg-terracotta/10 text-terracotta font-bold px-1.5 py-0.2 rounded">
+                          You
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted block break-all">{u.email}</span>
+                  </div>
+
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                      u.role === "ADMIN"
+                        ? "bg-purple-100 text-purple-800"
+                        : "bg-sky-100 text-sky-800"
+                    }`}
+                  >
+                    <Shield className="h-3 w-3" />
+                    {u.role}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-line/60">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1 text-ink font-medium">
+                      <BookOpen className="h-3.5 w-3.5 text-muted" />
+                      <span>{u._count.stories} stories</span>
+                    </span>
+                    <span className="text-muted text-[11px]">
+                      Joined {format(new Date(u.createdAt), "MMM d, yyyy")}
+                    </span>
+                  </div>
+
+                  {isDeactivated ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-red-600 font-medium">
+                      <UserX className="h-3.5 w-3.5" />
+                      <span>Deactivated</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-moss font-medium">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span>Active</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Mobile Administrative Actions */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/40">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading || (isSelf && u.role === "ADMIN")}
+                    onClick={() => handleRoleToggle(u)}
+                    className="flex-1 h-8 text-xs border-line bg-paper"
+                  >
+                    {u.role === "ADMIN" ? "Demote" : "Make Admin"}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading || isSelf}
+                    onClick={() => handleStatusToggle(u)}
+                    className="flex-1 h-8 text-xs border-line bg-paper"
+                  >
+                    {isDeactivated ? "Reactivate" : "Deactivate"}
+                  </Button>
+
+                  {isDeactivated && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPurgeUserTarget(u)}
+                      className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 px-3"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      <span>Purge</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* GDPR Purge Dialog */}

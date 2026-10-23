@@ -72,22 +72,9 @@
   }
 }
 
-/* Subtle Paper-grain Overlay Utility */
+/* High-performance subtle paper texture utility (static, non-blocking) */
 .paper-grain {
   position: relative;
-}
-
-.paper-grain::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  opacity: 0.035;
-  z-index: 999;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
 /* Accessible focus ring */
@@ -96,10 +83,88 @@
   outline-offset: 2px;
 }
 
-/* Editorial selection */
+/* Editorial selection matching terracotta brand */
 ::selection {
-  background-color: var(--terracotta-subtle);
-  color: var(--terracotta);
+  background-color: #B5472B !important;
+  color: #FFFFFF !important;
+}
+
+input::selection,
+textarea::selection {
+  background-color: #B5472B !important;
+  color: #FFFFFF !important;
+}
+
+/* Global scrollbar rules:
+   Suppress all inner container, card, modal, and tab scrollbars
+   Only the root window / browser scrollbar remains visible
+*/
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  height: 0px;
+}
+
+/* Allow clean main browser scrollbar */
+html,
+body {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: #FBF7F0;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background-color: #E4DACB;
+  border-radius: 9999px;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background-color: #B5472B;
+}
+
+/* Utility to ensure scrollbar is hidden on any container */
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+
+/* Custom styling for native selects and option dropdown items */
+select {
+  color-scheme: light;
+}
+select option {
+  background-color: #FBF7F0 !important;
+  color: #1F1A17 !important;
+  font-family: var(--font-inter), sans-serif;
+  padding: 10px 14px;
+}
+select option:checked,
+select option:hover {
+  background-color: #F3ECE0 !important;
+  color: #B5472B !important;
 }
 
 /* Respect reduced motion */
