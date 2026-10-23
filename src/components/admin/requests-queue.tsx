@@ -24,6 +24,7 @@ import {
 } from "@/server/actions/admin";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import {
   RemovalRequestType,
   RemovalRequestStatus,
@@ -101,7 +102,7 @@ export function RequestsQueue({
       setAdminNote("");
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to resolve request");
+      toast.error(getFriendlyErrorMessage(err, "Failed to resolve request"));
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +122,7 @@ export function RequestsQueue({
       setAdminNote("");
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to resolve report");
+      toast.error(getFriendlyErrorMessage(err, "Failed to resolve report"));
     } finally {
       setIsSubmitting(false);
     }

@@ -63,6 +63,14 @@ export const metadata: Metadata = {
     title: "StoryKeeper AI",
     description: "Preserving real human voices and ancestral community memories.",
   },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-icon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -75,7 +83,7 @@ export default function RootLayout({
       lang="en"
       className={`${fraunces.variable} ${inter.variable} ${notoSerifDevanagari.variable} ${notoSansDevanagari.variable}`}
     >
-      <body className="paper-grain font-sans antialiased bg-paper text-ink selection:bg-terracotta-subtle selection:text-terracotta min-h-screen flex flex-col">
+      <body className="paper-grain font-sans antialiased bg-paper text-ink selection:bg-terracotta selection:text-white min-h-screen flex flex-col">
         {children}
         <Toaster />
       </body>

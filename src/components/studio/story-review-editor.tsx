@@ -28,6 +28,7 @@ import { WavesurferPlayer } from "@/components/story/wavesurfer-player";
 import { saveStoryReview } from "@/server/actions/review";
 import { submitStoryForModeration } from "@/server/actions/story";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface ThemeOption {
   id: string;
@@ -159,8 +160,10 @@ export function StoryReviewEditor({
       });
       setIsReviewed(true);
       toast.success("AI output verified and marked as reviewed!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to mark as reviewed");
+    } catch (err: unknown) {
+      toast.error(
+        getFriendlyErrorMessage(err, "Failed to mark as reviewed. Please try again.")
+      );
     } finally {
       setIsSaving(false);
     }
@@ -221,8 +224,10 @@ export function StoryReviewEditor({
 
       toast.success("Story submitted for moderation! You can track its status.");
       router.push(`/dashboard/stories/${story.id}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to submit story");
+    } catch (err: unknown) {
+      toast.error(
+        getFriendlyErrorMessage(err, "Failed to submit story. Please try again.")
+      );
       setIsSubmitting(false);
     }
   };

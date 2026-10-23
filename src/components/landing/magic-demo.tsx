@@ -24,13 +24,13 @@ export function MagicDemo() {
 
         <div className="mt-12 max-w-4xl mx-auto rounded-3xl border border-line bg-white shadow-warm-lg overflow-hidden">
           {/* Header Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-line bg-paper-2/60 px-6 py-4 gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-line bg-paper-2/60 px-4 sm:px-6 py-4 gap-4">
             {/* View Switcher Tabs */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-paper border border-line">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-paper border border-line overflow-x-auto scrollbar-none max-w-full">
               <button
                 onClick={() => setActiveTab("original")}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0",
                   activeTab === "original"
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"
@@ -41,7 +41,7 @@ export function MagicDemo() {
               <button
                 onClick={() => setActiveTab("translation")}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0",
                   activeTab === "translation"
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"
@@ -52,7 +52,7 @@ export function MagicDemo() {
               <button
                 onClick={() => setActiveTab("summary")}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0",
                   activeTab === "summary"
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"

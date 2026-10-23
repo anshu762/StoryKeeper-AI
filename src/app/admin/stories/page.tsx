@@ -110,8 +110,8 @@ export default async function AdminStoriesPage(props: AdminStoriesPageProps) {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl border border-line bg-white shadow-warm overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-2xl border border-line bg-white shadow-warm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-paper-2 border-b border-line text-[11px] font-semibold text-muted uppercase tracking-wider">
@@ -185,6 +185,63 @@ export default async function AdminStoriesPage(props: AdminStoriesPageProps) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards View */}
+      <div className="md:hidden space-y-3">
+        {stories.length === 0 ? (
+          <div className="p-8 text-center text-muted text-xs bg-white rounded-2xl border border-line">
+            No stories found matching your filter criteria.
+          </div>
+        ) : (
+          stories.map((story) => (
+            <div
+              key={story.id}
+              className="bg-white border border-line rounded-2xl p-4 shadow-xs space-y-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <Link
+                  href={`/admin/stories/${story.id}`}
+                  className="font-semibold text-sm text-ink hover:text-terracotta line-clamp-1 block transition-colors"
+                >
+                  {story.title}
+                </Link>
+                <StatusBadge status={story.status} />
+              </div>
+
+              <div className="text-xs text-muted space-y-0.5">
+                <span className="font-medium text-ink block">
+                  By {story.contributor.name}
+                </span>
+                <span className="text-[11px] block">{story.contributor.email}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-line/60">
+                <div className="flex items-center gap-2">
+                  <span className="bg-paper-2 px-2 py-0.5 rounded text-[11px] border border-line text-ink">
+                    {story.originalLanguage}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                    {story.permission}
+                  </span>
+                </div>
+
+                <span className="text-muted text-[11px]">
+                  {format(new Date(story.createdAt), "MMM d, yyyy")}
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-line/40 flex justify-end">
+                <Button asChild size="sm" variant="outline" className="w-full text-xs h-8 border-line bg-paper">
+                  <Link href={`/admin/stories/${story.id}`} className="flex items-center justify-center gap-1.5">
+                    <span>Edit / Review Story</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Pagination */}

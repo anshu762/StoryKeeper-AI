@@ -11,9 +11,11 @@ import {
   BarChart3,
   Download,
   ArrowLeft,
+  Globe,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/permissions";
 import { UserMenu } from "@/components/navigation/user-menu";
+import { Button } from "@/components/ui/button";
 
 export default async function AdminLayout({
   children,
@@ -24,8 +26,8 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-paper flex flex-col md:flex-row">
-      {/* Admin Desktop Sidebar */}
-      <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-line bg-[#1E1916] text-[#FBF7F0] p-6 shrink-0 flex flex-col justify-between">
+      {/* Admin Desktop Sidebar (Sticky) */}
+      <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-line bg-[#1E1916] text-[#FBF7F0] p-6 shrink-0 flex flex-col justify-between md:sticky md:top-0 md:h-screen md:overflow-y-auto scrollbar-none z-20">
         <div className="space-y-6">
           {/* Brand */}
           <Link href="/admin" className="flex items-center gap-2.5">
@@ -110,28 +112,60 @@ export default async function AdminLayout({
           </nav>
         </div>
 
-        {/* Return to Dashboard */}
-        <div className="pt-6 border-t border-white/10 mt-6">
+        {/* Return to Dashboard and Main Archive */}
+        <div className="pt-6 border-t border-white/10 mt-6 space-y-2">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 text-xs text-white/60 hover:text-white transition-colors font-medium"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors font-medium"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Contributor Dashboard</span>
+            <ArrowLeft className="h-3.5 w-3.5 text-saffron" />
+            <span>← Contributor Dashboard</span>
+          </Link>
+          <Link
+            href="/"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors font-medium"
+          >
+            <Globe className="h-3.5 w-3.5 text-moss" />
+            <span>Public Archive Home</span>
           </Link>
         </div>
       </aside>
 
       {/* Main Admin Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-line bg-white/70 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-moss">
-              ● Administrative Control
+        <header className="h-16 border-b border-line bg-white/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-moss flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-moss animate-pulse" />
+              Administrative Control
             </span>
+
+            {/* Quick Back to Site Buttons in Header */}
+            <div className="hidden sm:flex items-center gap-2 ml-4 pl-4 border-l border-line">
+              <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-muted hover:text-ink">
+                <Link href="/dashboard" className="flex items-center gap-1.5">
+                  <ArrowLeft className="h-3.5 w-3.5 text-terracotta" />
+                  <span>Dashboard</span>
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-muted hover:text-ink">
+                <Link href="/" className="flex items-center gap-1.5">
+                  <Globe className="h-3.5 w-3.5 text-muted" />
+                  <span>Public Archive</span>
+                </Link>
+              </Button>
+            </div>
           </div>
 
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="sm:hidden h-8 px-2 text-xs rounded-xl border-line">
+              <Link href="/dashboard" className="flex items-center gap-1">
+                <ArrowLeft className="h-3 w-3" />
+                <span>Exit</span>
+              </Link>
+            </Button>
+            <UserMenu />
+          </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-8 lg:p-10 max-w-7xl w-full mx-auto">

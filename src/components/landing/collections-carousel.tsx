@@ -63,7 +63,7 @@ export function CollectionsCarousel({ collections }: CollectionsCarouselProps) {
           {collections.map((c) => (
             <div
               key={c.slug}
-              className="snap-start shrink-0 w-[300px] sm:w-[360px]"
+              className="snap-start shrink-0 w-[82vw] sm:w-[360px] max-w-[360px]"
             >
               <CollectionCard
                 slug={c.slug}

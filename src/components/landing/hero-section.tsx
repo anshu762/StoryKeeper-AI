@@ -104,7 +104,7 @@ export function HeroSection() {
             </motion.div>
 
             {/* Staggered Word Reveal Headline */}
-            <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-medium tracking-tight text-ink leading-[1.08] flex flex-wrap gap-x-3 gap-y-1">
+            <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight text-ink leading-[1.08] flex flex-wrap gap-x-2.5 sm:gap-x-3 gap-y-1">
               {headlineWords.map((word, index) => (
                 <span key={index} className="inline-block overflow-hidden">
                   <motion.span

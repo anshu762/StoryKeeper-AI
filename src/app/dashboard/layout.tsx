@@ -22,8 +22,8 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-paper flex flex-col md:flex-row pb-16 md:pb-0">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 flex-col justify-between border-r border-line bg-paper-2/60 p-6 shrink-0">
+      {/* Desktop Sidebar (Sticky) */}
+      <aside className="hidden md:flex md:w-64 flex-col justify-between border-r border-line bg-paper-2/60 p-6 shrink-0 md:sticky md:top-0 md:h-screen md:overflow-y-auto scrollbar-none z-20">
         <div className="space-y-6">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2.5 group">

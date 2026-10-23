@@ -25,6 +25,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import { AiJobStatus, AiJobType } from "@prisma/client";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface AiJobItem {
   id: string;
@@ -78,7 +79,7 @@ export function AiJobsInspector({
       toast.success("AI Job reset to PENDING. Processing scheduled.");
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Retry failed");
+      toast.error(getFriendlyErrorMessage(err, "Retry failed"));
     } finally {
       setRetryingJobId(null);
     }
@@ -91,7 +92,7 @@ export function AiJobsInspector({
       toast.success(`Successfully retried ${res.retriedCount} failed jobs!`);
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to retry jobs");
+      toast.error(getFriendlyErrorMessage(err, "Failed to retry jobs"));
     } finally {
       setIsRetryingAll(false);
     }
@@ -108,7 +109,7 @@ export function AiJobsInspector({
       );
       router.refresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to reset jobs");
+      toast.error(getFriendlyErrorMessage(err, "Failed to reset jobs"));
     } finally {
       setIsResettingStuck(false);
     }
@@ -213,7 +214,7 @@ export function AiJobsInspector({
         </Link>
       </div>
 
-      {/* Jobs Table */}
+      {/* Jobs Table & Mobile Cards */}
       {initialJobs.length === 0 ? (
         <EmptyState
           icon={Cpu}
@@ -221,118 +222,218 @@ export function AiJobsInspector({
           description="There are currently no AI background jobs matching your filter criteria."
         />
       ) : (
-        <div className="rounded-2xl border border-line bg-white shadow-warm overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-paper-2 border-b border-line text-[11px] font-semibold text-muted uppercase tracking-wider">
-                <th className="py-3.5 px-4">Task & Story</th>
-                <th className="py-3.5 px-4">Job Type</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Retries</th>
-                <th className="py-3.5 px-4">Created</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/60 text-xs">
-              {initialJobs.map((job) => {
-                const isRetrying = retryingJobId === job.id;
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block rounded-2xl border border-line bg-white shadow-warm overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-paper-2 border-b border-line text-[11px] font-semibold text-muted uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Task & Story</th>
+                  <th className="py-3.5 px-4">Job Type</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Retries</th>
+                  <th className="py-3.5 px-4">Created</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60 text-xs">
+                {initialJobs.map((job) => {
+                  const isRetrying = retryingJobId === job.id;
 
-                return (
-                  <tr key={job.id} className="hover:bg-paper/40 transition-colors">
-                    <td className="py-3.5 px-4 max-w-xs">
-                      <div className="flex flex-col">
-                        <Link
-                          href={`/admin/stories/${job.story.id}`}
-                          className="font-semibold text-ink hover:text-terracotta truncate transition-colors"
+                  return (
+                    <tr key={job.id} className="hover:bg-paper/40 transition-colors">
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <div className="flex flex-col">
+                          <Link
+                            href={`/admin/stories/${job.story.id}`}
+                            className="font-semibold text-ink hover:text-terracotta truncate transition-colors"
+                          >
+                            {job.story.title}
+                          </Link>
+                          <span className="text-[10px] text-muted">
+                            By {job.story.contributor.name}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <span className="bg-paper-2 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-line text-ink uppercase tracking-wider">
+                          {job.type}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider ${
+                            job.status === "COMPLETED"
+                              ? "bg-moss/10 text-moss"
+                              : job.status === "FAILED"
+                              ? "bg-red-100 text-red-700"
+                              : job.status === "PROCESSING"
+                              ? "bg-amber-100 text-amber-700 animate-pulse"
+                              : "bg-purple-100 text-purple-700"
+                          }`}
                         >
-                          {job.story.title}
-                        </Link>
-                        <span className="text-[10px] text-muted">
-                          By {job.story.contributor.name}
+                          {job.status === "COMPLETED" && (
+                            <CheckCircle2 className="h-3 w-3" />
+                          )}
+                          {job.status === "FAILED" && (
+                            <AlertCircle className="h-3 w-3" />
+                          )}
+                          {job.status}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3.5 px-4">
-                      <span className="bg-paper-2 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-line text-ink uppercase tracking-wider">
-                        {job.type}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider ${
-                          job.status === "COMPLETED"
-                            ? "bg-moss/10 text-moss"
-                            : job.status === "FAILED"
-                            ? "bg-red-100 text-red-700"
-                            : job.status === "PROCESSING"
-                            ? "bg-amber-100 text-amber-700 animate-pulse"
-                            : "bg-purple-100 text-purple-700"
-                        }`}
-                      >
-                        {job.status === "COMPLETED" && (
-                          <CheckCircle2 className="h-3 w-3" />
+                      <td className="py-3.5 px-4 text-muted text-xs">
+                        {job.retryCount > 0 ? (
+                          <span className="font-medium text-amber-700">
+                            {job.retryCount}x retry
+                          </span>
+                        ) : (
+                          <span>0</span>
                         )}
-                        {job.status === "FAILED" && (
-                          <AlertCircle className="h-3 w-3" />
-                        )}
-                        {job.status}
-                      </span>
-                    </td>
+                      </td>
 
-                    <td className="py-3.5 px-4 text-muted text-xs">
-                      {job.retryCount > 0 ? (
-                        <span className="font-medium text-amber-700">
-                          {job.retryCount}x retry
-                        </span>
-                      ) : (
-                        <span>0</span>
-                      )}
-                    </td>
+                      <td className="py-3.5 px-4 text-muted text-[11px]">
+                        {formatDistanceToNow(new Date(job.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </td>
 
-                    <td className="py-3.5 px-4 text-muted text-[11px]">
-                      {formatDistanceToNow(new Date(job.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {job.errorMessage && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedErrorJob(job)}
+                              className="h-7 text-[11px] border-red-200 text-red-600 hover:bg-red-50"
+                            >
+                              <FileCode className="h-3 w-3 mr-1" />
+                              <span>Error Log</span>
+                            </Button>
+                          )}
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {job.errorMessage && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setSelectedErrorJob(job)}
-                            className="h-7 text-[11px] border-red-200 text-red-600 hover:bg-red-50"
+                            disabled={isRetrying || job.status === "PROCESSING"}
+                            onClick={() => handleRetrySingle(job.id)}
+                            className="h-7 text-[11px] border-line bg-white"
                           >
-                            <FileCode className="h-3 w-3 mr-1" />
-                            <span>Error Log</span>
+                            {isRetrying ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                            )}
+                            <span>Retry</span>
                           </Button>
-                        )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isRetrying || job.status === "PROCESSING"}
-                          onClick={() => handleRetrySingle(job.id)}
-                          className="h-7 text-[11px] border-line bg-white"
-                        >
-                          {isRetrying ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                          )}
-                          <span>Retry</span>
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+          {/* Mobile Cards View */}
+          <div className="md:hidden space-y-3">
+            {initialJobs.map((job) => {
+              const isRetrying = retryingJobId === job.id;
+
+              return (
+                <div
+                  key={job.id}
+                  className="bg-white border border-line rounded-2xl p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <Link
+                        href={`/admin/stories/${job.story.id}`}
+                        className="font-semibold text-sm text-ink hover:text-terracotta line-clamp-1 block transition-colors"
+                      >
+                        {job.story.title}
+                      </Link>
+                      <span className="text-xs text-muted block">
+                        By {job.story.contributor.name}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider shrink-0 ${
+                        job.status === "COMPLETED"
+                          ? "bg-moss/10 text-moss"
+                          : job.status === "FAILED"
+                          ? "bg-red-100 text-red-700"
+                          : job.status === "PROCESSING"
+                          ? "bg-amber-100 text-amber-700 animate-pulse"
+                          : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
+                      {job.status === "COMPLETED" && (
+                        <CheckCircle2 className="h-3 w-3" />
+                      )}
+                      {job.status === "FAILED" && (
+                        <AlertCircle className="h-3 w-3" />
+                      )}
+                      {job.status}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-line/60">
+                    <span className="bg-paper-2 px-2 py-0.5 rounded text-[11px] font-semibold border border-line text-ink uppercase tracking-wider">
+                      {job.type}
+                    </span>
+
+                    <div className="flex items-center gap-2 text-muted text-[11px]">
+                      {job.retryCount > 0 && (
+                        <span className="font-medium text-amber-700">
+                          {job.retryCount}x retry
+                        </span>
+                      )}
+                      <span>
+                        {formatDistanceToNow(new Date(job.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-line/40">
+                    {job.errorMessage && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedErrorJob(job)}
+                        className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 flex-1"
+                      >
+                        <FileCode className="h-3.5 w-3.5 mr-1" />
+                        <span>View Error</span>
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isRetrying || job.status === "PROCESSING"}
+                      onClick={() => handleRetrySingle(job.id)}
+                      className="h-8 text-xs border-line bg-paper flex-1"
+                    >
+                      {isRetrying ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      <span>Retry Job</span>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Error Details Modal */}

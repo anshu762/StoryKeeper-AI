@@ -8,7 +8,17 @@ import { formatDuration } from "@/lib/utils";
 const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 const MAX_DURATION_SEC = 15 * 60; // 15 min
 
-const ACCEPTED_EXTENSIONS = [".mp3", ".m4a", ".wav", ".ogg", ".webm", ".aac"];
+const ACCEPTED_EXTENSIONS = [
+  ".mp3",
+  ".m4a",
+  ".wav",
+  ".ogg",
+  ".webm",
+  ".aac",
+  ".flac",
+  ".mp4",
+  ".3gp",
+];
 
 interface AudioUploaderProps {
   onFileSelected: (file: File, durationSec: number) => void;
@@ -30,12 +40,13 @@ export function AudioUploader({ onFileSelected, disabled = false }: AudioUploade
     const file = files[0];
     setErrorMessage(null);
 
-    // 1. Validate file extension
+    // 1. Validate file extension and MIME type
     const name = file.name.toLowerCase();
     const hasValidExt = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
-    if (!hasValidExt) {
+    const isAudioMime = file.type.startsWith("audio/") || file.type === "video/mp4";
+    if (!hasValidExt && !isAudioMime) {
       setErrorMessage(
-        "Unsupported file type. Please upload an MP3, M4A, WAV, OGG, or WebM audio file."
+        "Unsupported file type. Please upload an MP3, M4A, WAV, OGG, WebM, AAC, or FLAC audio file."
       );
       return;
     }

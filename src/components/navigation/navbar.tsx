@@ -8,15 +8,15 @@ import { MobileNav } from "./mobile-nav";
 export function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-line/80 bg-paper/85 backdrop-blur-md transition-all">
-      <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
         {/* Brand Wordmark */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5 group focus:outline-none">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-terracotta text-white shadow-sm transition-transform group-hover:scale-105">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-terracotta text-white shadow-sm transition-transform group-hover:scale-105 shrink-0">
               <Radio className="h-4 w-4" />
             </div>
             <div className="flex flex-col">
-              <span className="font-serif text-xl font-bold tracking-tight text-ink group-hover:text-terracotta transition-colors">
+              <span className="font-serif text-lg sm:text-xl font-bold tracking-tight text-ink group-hover:text-terracotta transition-colors">
                 StoryKeeper<span className="text-terracotta">.ai</span>
               </span>
               <span className="text-[10px] uppercase font-semibold tracking-wider text-muted -mt-1 hidden sm:block">

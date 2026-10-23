@@ -52,12 +52,12 @@ export function StoryTabs({
   return (
     <div className="rounded-3xl border border-line bg-white/90 shadow-warm overflow-hidden">
       {/* Tab Navigation Header */}
-      <div className="flex items-center justify-between border-b border-line px-4 sm:px-6 pt-3 bg-paper-2/50">
-        <div className="flex space-x-2">
+      <div className="flex items-center justify-between border-b border-line px-3 sm:px-6 pt-3 bg-paper-2/50 overflow-x-auto scrollbar-none">
+        <div className="flex space-x-1 sm:space-x-2 shrink-0">
           <button
             onClick={() => setActiveTab("transcript")}
             className={cn(
-              "relative px-4 py-3 text-sm font-medium transition-colors border-b-2",
+              "relative px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap shrink-0",
               activeTab === "transcript"
                 ? "border-terracotta text-terracotta font-semibold"
                 : "border-transparent text-muted hover:text-ink"
@@ -72,7 +72,7 @@ export function StoryTabs({
           <button
             onClick={() => setActiveTab("translation")}
             className={cn(
-              "relative px-4 py-3 text-sm font-medium transition-colors border-b-2",
+              "relative px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap shrink-0",
               activeTab === "translation"
                 ? "border-terracotta text-terracotta font-semibold"
                 : "border-transparent text-muted hover:text-ink"
@@ -84,7 +84,7 @@ export function StoryTabs({
           <button
             onClick={() => setActiveTab("summary")}
             className={cn(
-              "relative px-4 py-3 text-sm font-medium transition-colors border-b-2",
+              "relative px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap shrink-0",
               activeTab === "summary"
                 ? "border-terracotta text-terracotta font-semibold"
                 : "border-transparent text-muted hover:text-ink"
