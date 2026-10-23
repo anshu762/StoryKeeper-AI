@@ -16,7 +16,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "prisma:seed": "tsx prisma/seed.ts",
-    "seed:stress": "tsx prisma/seed-stress.ts"
+    "seed:stress": "tsx prisma/seed-stress.ts",
+    "set-password": "tsx prisma/set-password.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
