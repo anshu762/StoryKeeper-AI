@@ -20,6 +20,10 @@ const ALLOWED_MIME_TYPES = new Set([
   "audio/ogg",
   "audio/webm",
   "audio/aac",
+  "audio/flac",
+  "audio/x-flac",
+  "audio/3gpp",
+  "audio/3gp",
 ]);
 
 export async function POST(request: NextRequest) {
@@ -35,10 +39,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { mimeType, sizeBytes, filename } = body;
 
-    if (!mimeType || !ALLOWED_MIME_TYPES.has(mimeType.toLowerCase())) {
+    const baseMime = (mimeType || "").split(";")[0].trim().toLowerCase();
+
+    if (!baseMime || !ALLOWED_MIME_TYPES.has(baseMime)) {
       return NextResponse.json(
         {
-          error: `Invalid audio format: ${mimeType}. Please upload MP3, M4A, WAV, OGG, or WebM.`,
+          error: `Invalid audio format: ${mimeType || "unknown"}. Please upload MP3, M4A, WAV, OGG, WebM, or AAC.`,
         },
         { status: 400 }
       );
@@ -53,14 +59,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ext = mimeType.includes("wav")
+    const ext = baseMime.includes("wav")
       ? "wav"
-      : mimeType.includes("mpeg") || mimeType.includes("mp3")
+      : baseMime.includes("mpeg") || baseMime.includes("mp3")
       ? "mp3"
-      : mimeType.includes("ogg")
+      : baseMime.includes("ogg")
       ? "ogg"
-      : mimeType.includes("mp4") || mimeType.includes("m4a")
+      : baseMime.includes("mp4") || baseMime.includes("m4a")
       ? "m4a"
+      : baseMime.includes("webm")
+      ? "webm"
+      : baseMime.includes("aac")
+      ? "aac"
+      : baseMime.includes("flac")
+      ? "flac"
       : "wav";
 
     const cleanFilename = (filename || "audio")
@@ -70,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const presigned = await getPresignedUploadUrl({
       key,
-      mimeType,
+      mimeType: baseMime,
       sizeBytes,
     });
 

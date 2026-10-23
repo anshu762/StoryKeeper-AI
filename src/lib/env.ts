@@ -6,28 +6,22 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z
     .string()
     .min(16, "BETTER_AUTH_SECRET must be at least 16 characters"),
+  AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 
-  // OpenRouter AI
+  // OpenRouter AI (Cost-effective Gemini Flash + Whisper STT)
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_STT_MODEL: z.string().default("openai/whisper-large-v3"),
-  OPENROUTER_LLM_MODEL: z.string().default("anthropic/claude-3.5-sonnet"),
+  OPENROUTER_LLM_MODEL: z.string().default("google/gemini-2.0-flash-001"),
 
-  // Cloudflare R2
-  R2_ACCOUNT_ID: z.string().optional(),
-  R2_ACCESS_KEY_ID: z.string().optional(),
-  R2_SECRET_ACCESS_KEY: z.string().optional(),
-  R2_BUCKET: z.string().default("storykeeper-audio"),
-  R2_PUBLIC_URL: z.string().optional(),
+  // Cloudinary Storage
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_URL: z.string().optional(),
 
-  // Resend
-  RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z
-    .string()
-    .default("StoryKeeper Archive <archive@storykeeper.org>"),
-
-  // Seed
+  // Seed Admin Credentials
   SEED_ADMIN_EMAIL: z.string().email().default("admin@storykeeper.org"),
   SEED_ADMIN_PASSWORD: z.string().min(8).default("StoryKeeper2026!Admin"),
 

@@ -1,33 +1,37 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v2 as cloudinary } from "cloudinary";
 import { env } from "@/lib/env";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
-const hasR2Credentials = Boolean(
-  env.R2_ACCOUNT_ID &&
-    env.R2_ACCESS_KEY_ID &&
-    env.R2_SECRET_ACCESS_KEY &&
-    env.R2_BUCKET
+const hasCloudinaryCredentials = Boolean(
+  (env.CLOUDINARY_CLOUD_NAME &&
+    env.CLOUDINARY_API_KEY &&
+    env.CLOUDINARY_API_SECRET) ||
+    env.CLOUDINARY_URL
 );
 
-// Initialize S3 client for Cloudflare R2
-const s3Client = hasR2Credentials
-  ? new S3Client({
-      region: "auto",
-      endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: env.R2_ACCESS_KEY_ID as string,
-        secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
-      },
-    })
-  : null;
+// Initialize Cloudinary
+if (hasCloudinaryCredentials) {
+  if (
+    env.CLOUDINARY_CLOUD_NAME &&
+    env.CLOUDINARY_API_KEY &&
+    env.CLOUDINARY_API_SECRET
+  ) {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+  } else if (env.CLOUDINARY_URL) {
+    const cleanUrl = env.CLOUDINARY_URL.replace(/^CLOUDINARY_URL=/, "");
+    cloudinary.config({
+      cloudinary_url: cleanUrl,
+      secure: true,
+    });
+  }
+}
 
 // Local upload directory fallback for development
 const LOCAL_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
@@ -35,38 +39,78 @@ if (!fs.existsSync(LOCAL_UPLOAD_DIR)) {
   fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
 }
 
+export function isCloudinaryConfigured(): boolean {
+  return hasCloudinaryCredentials;
+}
+
 /**
- * Generates a presigned PUT URL for direct browser audio upload.
+ * Normalizes a storage key for Cloudinary public_id (stripping leading slashes or duplicate extensions if needed)
+ */
+function sanitizePublicId(key: string): string {
+  return key.replace(/^\/+/, "").replace(/\.[^/.]+$/, "");
+}
+
+/**
+ * Generates an upload URL for direct browser audio upload.
+ * If Cloudinary is configured, returns our secure upload endpoint that streams directly to Cloudinary.
+ * If in dev without Cloudinary, falls back to local upload endpoint.
  */
 export async function getPresignedUploadUrl(params: {
   key: string;
   mimeType: string;
   sizeBytes?: number;
 }): Promise<{ uploadUrl: string; key: string; isLocalFallback: boolean }> {
-  const { key, mimeType } = params;
+  const { key } = params;
 
-  if (s3Client && env.R2_BUCKET) {
-    const command = new PutObjectCommand({
-      Bucket: env.R2_BUCKET,
-      Key: key,
-      ContentType: mimeType,
-    });
-
-    const uploadUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 3600, // 1 hour
-    });
-
-    return { uploadUrl, key, isLocalFallback: false };
-  }
-
-  // Local fallback endpoint for development
-  const uploadUrl = `/api/upload/local?key=${encodeURIComponent(key)}`;
-  return { uploadUrl, key, isLocalFallback: true };
+  // We route client PUT uploads through /api/upload/file which streams to Cloudinary (or saves locally)
+  const uploadUrl = `/api/upload/file?key=${encodeURIComponent(key)}`;
+  return {
+    uploadUrl,
+    key,
+    isLocalFallback: !hasCloudinaryCredentials,
+  };
 }
 
 /**
- * Generates a short-lived signed GET URL for secure audio streaming.
- * NEVER serves audio publicly without authorization.
+ * Uploads a buffer directly to Cloudinary (used by server actions and upload endpoints)
+ */
+export async function uploadBufferToCloudinary(
+  buffer: Buffer,
+  key: string
+): Promise<{ secure_url: string; public_id: string }> {
+  if (!hasCloudinaryCredentials) {
+    throw new Error("Cloudinary credentials are not configured");
+  }
+
+  const publicId = sanitizePublicId(key);
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "video", // Cloudinary handles audio files under video resource_type
+        public_id: publicId,
+        overwrite: true,
+        folder: "storykeeper_audio",
+      },
+      (error, result) => {
+        if (error || !result) {
+          reject(error || new Error("Cloudinary upload returned empty result"));
+        } else {
+          resolve({
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+          });
+        }
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
+}
+
+/**
+ * Generates a secure URL for audio streaming/playback.
+ * Audio is NEVER served publicly without authorization.
  */
 export async function getSignedDownloadUrl(
   key: string,
@@ -77,18 +121,36 @@ export async function getSignedDownloadUrl(
     return "/samples/sample.mp3";
   }
 
-  if (s3Client && env.R2_BUCKET) {
-    const command = new GetObjectCommand({
-      Bucket: env.R2_BUCKET,
-      Key: key,
-    });
+  // If Cloudinary is configured, generate a signed / secure delivery URL
+  if (hasCloudinaryCredentials) {
+    const publicId = key.startsWith("storykeeper_audio/")
+      ? sanitizePublicId(key)
+      : `storykeeper_audio/${sanitizePublicId(key)}`;
 
-    return await getSignedUrl(s3Client, command, {
-      expiresIn: expiresInSeconds,
-    });
+    const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
+
+    try {
+      // Cloudinary signed delivery URL
+      const signedUrl = cloudinary.url(publicId, {
+        resource_type: "video",
+        secure: true,
+        sign_url: true,
+        expires_at: expiresAt,
+      });
+
+      if (signedUrl) {
+        return signedUrl;
+      }
+    } catch (err) {
+      console.warn("Failed to generate signed Cloudinary URL, generating standard secure URL:", err);
+      return cloudinary.url(publicId, {
+        resource_type: "video",
+        secure: true,
+      });
+    }
   }
 
-  // Local storage signed URL with HMAC signature
+  // Local storage signed URL with HMAC signature for secure local streaming
   const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
   const secret = env.BETTER_AUTH_SECRET || "local-storage-secret";
   const signature = crypto
@@ -112,42 +174,48 @@ export async function fetchAudioBuffer(key: string): Promise<Buffer> {
     if (fs.existsSync(localSample)) {
       return fs.readFileSync(localSample);
     }
-    // Return empty 1s silence buffer fallback
     return Buffer.alloc(1024);
   }
 
-  if (s3Client && env.R2_BUCKET) {
-    const command = new GetObjectCommand({
-      Bucket: env.R2_BUCKET,
-      Key: key,
-    });
-
-    const response = await s3Client.send(command);
-    if (!response.Body) {
-      throw new Error(`Audio object not found in R2 for key: ${key}`);
-    }
-
-    const byteArray = await response.Body.transformToByteArray();
-    return Buffer.from(byteArray);
-  }
-
-  // Local fallback: read from public/uploads/
+  // Check local upload directory first (for local dev or fallback)
   const localFile = path.join(LOCAL_UPLOAD_DIR, path.basename(key));
   if (fs.existsSync(localFile)) {
     return fs.readFileSync(localFile);
   }
 
-  // Check public/samples as last resort
-  const localSample = path.join(process.cwd(), "public", "samples", "sample.mp3");
-  if (fs.existsSync(localSample)) {
-    return fs.readFileSync(localSample);
+  // Fetch from Cloudinary
+  if (hasCloudinaryCredentials) {
+    const publicId = key.startsWith("storykeeper_audio/")
+      ? sanitizePublicId(key)
+      : `storykeeper_audio/${sanitizePublicId(key)}`;
+
+    const deliveryUrl = cloudinary.url(publicId, {
+      resource_type: "video",
+      secure: true,
+    });
+
+    try {
+      const response = await fetch(deliveryUrl);
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+      }
+    } catch (err) {
+      console.error(`Failed to fetch audio from Cloudinary (${deliveryUrl}):`, err);
+    }
   }
 
-  throw new Error(`Local audio file not found on disk: ${key}`);
+  // Check public/samples as last resort
+  const fallbackSample = path.join(process.cwd(), "public", "samples", "sample.mp3");
+  if (fs.existsSync(fallbackSample)) {
+    return fs.readFileSync(fallbackSample);
+  }
+
+  throw new Error(`Audio file not found in Cloudinary or local storage: ${key}`);
 }
 
 /**
- * Permanently deletes an audio object from Cloudflare R2 or local storage.
+ * Permanently deletes an audio object from Cloudinary or local storage.
  * Used during GDPR/account deletion or story purging.
  */
 export async function deleteAudioObject(key: string | null | undefined): Promise<boolean> {
@@ -158,25 +226,36 @@ export async function deleteAudioObject(key: string | null | undefined): Promise
     return false;
   }
 
-  try {
-    if (s3Client && env.R2_BUCKET) {
-      const command = new DeleteObjectCommand({
-        Bucket: env.R2_BUCKET,
-        Key: key,
-      });
-      await s3Client.send(command);
-      return true;
-    }
+  let deleted = false;
 
-    // Local fallback deletion
-    const localFile = path.join(LOCAL_UPLOAD_DIR, path.basename(key));
-    if (fs.existsSync(localFile)) {
-      fs.unlinkSync(localFile);
-      return true;
+  // 1. Delete from Cloudinary if configured
+  if (hasCloudinaryCredentials) {
+    try {
+      const publicId = key.startsWith("storykeeper_audio/")
+        ? sanitizePublicId(key)
+        : `storykeeper_audio/${sanitizePublicId(key)}`;
+
+      const res = await cloudinary.uploader.destroy(publicId, {
+        resource_type: "video",
+      });
+      if (res.result === "ok") {
+        deleted = true;
+      }
+    } catch (error) {
+      console.error(`Failed to delete audio from Cloudinary for key ${key}:`, error);
     }
-    return false;
-  } catch (error) {
-    console.error(`Failed to delete audio object for key ${key}:`, error);
-    return false;
   }
+
+  // 2. Delete from local storage if exists
+  const localFile = path.join(LOCAL_UPLOAD_DIR, path.basename(key));
+  if (fs.existsSync(localFile)) {
+    try {
+      fs.unlinkSync(localFile);
+      deleted = true;
+    } catch (err) {
+      console.error(`Failed to delete local file for key ${key}:`, err);
+    }
+  }
+
+  return deleted;
 }

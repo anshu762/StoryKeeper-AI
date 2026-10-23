@@ -65,6 +65,10 @@ export async function GET(request: NextRequest) {
       ? "audio/mp4"
       : ext === ".ogg"
       ? "audio/ogg"
+      : ext === ".aac"
+      ? "audio/aac"
+      : ext === ".flac"
+      ? "audio/flac"
       : "audio/webm";
 
   // Handle HTTP Range header for Wavesurfer seek support
