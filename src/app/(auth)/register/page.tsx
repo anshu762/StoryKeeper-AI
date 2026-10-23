@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Loader2, ArrowRight, AlertCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signUp } from "@/lib/auth-client";
+import { signUp, useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
 
 const registerSchema = z.object({
@@ -30,8 +30,15 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
+  const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (session?.user) {
+      router.replace(callbackUrl);
+    }
+  }, [session, callbackUrl, router]);
 
   const {
     register,

@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signIn } from "@/lib/auth-client";
+import { signIn, useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
@@ -24,8 +24,16 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
+  const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // If already authenticated with a valid session in DB, navigate to dashboard
+  React.useEffect(() => {
+    if (session?.user) {
+      router.replace(callbackUrl);
+    }
+  }, [session, callbackUrl, router]);
 
   const {
     register,
@@ -106,12 +114,14 @@ function LoginForm() {
             <label className="text-xs font-semibold uppercase tracking-wider text-ink font-sans">
               Password
             </label>
+            {/* Password reset disabled as requested
             <Link
               href="/forgot-password"
               className="text-xs text-terracotta hover:underline font-medium"
             >
               Forgot password?
             </Link>
+            */}
           </div>
           <Input
             type="password"

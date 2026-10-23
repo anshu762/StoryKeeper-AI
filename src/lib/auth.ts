@@ -13,6 +13,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    /* Password reset disabled as requested
     async sendResetPassword({ user, url }) {
       if (process.env.RESEND_API_KEY) {
         try {
@@ -55,6 +56,7 @@ export const auth = betterAuth({
         );
       }
     },
+    */
   },
   user: {
     additionalFields: {
