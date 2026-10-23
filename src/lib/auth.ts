@@ -8,7 +8,17 @@ export const auth = betterAuth({
     "storykeeper-dev-secret-key-at-least-32-chars-long",
   baseURL:
     process.env.BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
+  trustedOrigins: [
+    "https://storykeeperai.vercel.app",
+    "https://storykeeper-ai.vercel.app",
+    "https://*.vercel.app",
+    "http://localhost:3000",
+    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
+    ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+    ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
+  ],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
