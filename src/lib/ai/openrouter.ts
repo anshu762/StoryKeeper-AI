@@ -59,7 +59,7 @@ export class OpenRouterAiProvider implements AiProvider {
   constructor(apiKey?: string, sttModel?: string, llmModel?: string) {
     this.apiKey = apiKey || env.OPENROUTER_API_KEY || "";
     this.sttModel = sttModel || env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3";
-    this.llmModel = llmModel || env.OPENROUTER_LLM_MODEL || "anthropic/claude-3.5-sonnet";
+    this.llmModel = llmModel || env.OPENROUTER_LLM_MODEL || "google/gemini-2.0-flash-001";
   }
 
   private checkApiKey() {
@@ -80,6 +80,14 @@ export class OpenRouterAiProvider implements AiProvider {
       ? "wav"
       : params.mimeType.includes("mp3") || params.mimeType.includes("mpeg")
       ? "mp3"
+      : params.mimeType.includes("ogg")
+      ? "ogg"
+      : params.mimeType.includes("webm")
+      ? "webm"
+      : params.mimeType.includes("m4a") || params.mimeType.includes("mp4")
+      ? "m4a"
+      : params.mimeType.includes("flac")
+      ? "flac"
       : "wav";
 
     const payload = {
