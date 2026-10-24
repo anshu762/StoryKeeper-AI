@@ -36,6 +36,8 @@ export function AudioRecorder({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isProcessingWav, setIsProcessingWav] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [volumeLevel, setVolumeLevel] = useState(0);
+  const [isVoiceDetected, setIsVoiceDetected] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -67,7 +69,7 @@ export function AudioRecorder({
     }
   };
 
-  // Live waveform visualizer
+  // Live waveform visualizer with real-time voice volume detection
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
@@ -78,32 +80,64 @@ export function AudioRecorder({
 
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    let lastStateUpdateTime = 0;
 
     const render = () => {
       analyser.getByteFrequencyData(dataArray);
 
+      // Compute RMS / Average volume for voice detection
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      const avg = sum / bufferLength;
+      const currentVolume = Math.min(100, Math.round((avg / 75) * 100));
+
+      const now = performance.now();
+      if (now - lastStateUpdateTime > 90) {
+        lastStateUpdateTime = now;
+        setVolumeLevel(currentVolume);
+        setIsVoiceDetected(currentVolume >= 7);
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const barWidth = 4;
-      const gap = 2;
+      const barWidth = 6;
+      const gap = 3;
       const barCount = Math.floor(canvas.width / (barWidth + gap));
       const step = Math.floor(bufferLength / barCount) || 1;
+      const hasVoice = currentVolume >= 7;
 
       for (let i = 0; i < barCount; i++) {
         const val = dataArray[i * step] || 0;
         const percent = val / 255;
-        const height = Math.max(4, percent * canvas.height * 0.85);
+        // Responsive height: animated bounce if speaking, subtle idle wave if quiet
+        const minHeight = 6;
+        const height = Math.max(
+          minHeight,
+          percent * canvas.height * 0.9 + (hasVoice ? 4 : 0)
+        );
         const x = i * (barWidth + gap);
         const y = (canvas.height - height) / 2;
 
-        // Gradient from terracotta to saffron
+        // Gradient: Emerald when voice detected, terracotta to saffron for timbre
         const gradient = ctx.createLinearGradient(0, y, 0, y + height);
-        gradient.addColorStop(0, "#B5472B");
-        gradient.addColorStop(1, "#E3A33B");
+        if (hasVoice) {
+          gradient.addColorStop(0, "#10B981"); // Emerald top
+          gradient.addColorStop(0.5, "#B5472B"); // Terracotta mid
+          gradient.addColorStop(1, "#E3A33B"); // Saffron bottom
+        } else {
+          gradient.addColorStop(0, "#B5472B");
+          gradient.addColorStop(1, "#E3A33B");
+        }
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.roundRect(x, y, barWidth, height, 2);
+        if (typeof ctx.roundRect === "function") {
+          ctx.roundRect(x, y, barWidth, height, 3);
+        } else {
+          ctx.rect(x, y, barWidth, height);
+        }
         ctx.fill();
       }
 
@@ -297,6 +331,8 @@ export function AudioRecorder({
     setPreviewUrl(null);
     setState("idle");
     setElapsedSec(0);
+    setVolumeLevel(0);
+    setIsVoiceDetected(false);
     setErrorMessage(null);
   };
 
@@ -305,28 +341,48 @@ export function AudioRecorder({
       {/* Header status */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div
-            className={`w-3 h-3 rounded-full ${
-              state === "recording"
-                ? "bg-red-500 animate-ping"
-                : state === "paused"
-                ? "bg-saffron"
-                : state === "recorded"
-                ? "bg-moss"
-                : "bg-muted-foreground/40"
-            }`}
-          />
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {state === "recording"
-              ? "Recording in progress"
-              : state === "paused"
-              ? "Recording paused"
-              : state === "recorded"
-              ? "Audio captured successfully"
-              : state === "requesting"
-              ? "Accessing microphone..."
-              : "Microphone ready"}
-          </span>
+          {state === "recording" ? (
+            isVoiceDetected ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-xs">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                </span>
+                <span>Voice Detected &bull; Recording</span>
+                <div className="flex items-center gap-0.5 ml-1">
+                  <span className="w-1 h-3 bg-emerald-600 rounded-full animate-pulse" />
+                  <span className="w-1 h-4 bg-emerald-600 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1 h-2 bg-emerald-600 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-saffron/10 border border-saffron/30 text-ink text-xs font-medium">
+                <div className="w-2 h-2 rounded-full bg-saffron animate-pulse" />
+                <span>Listening... Speak into microphone</span>
+              </div>
+            )
+          ) : (
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  state === "paused"
+                    ? "bg-saffron"
+                    : state === "recorded"
+                    ? "bg-moss"
+                    : "bg-muted-foreground/40"
+                }`}
+              />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {state === "paused"
+                  ? "Recording paused"
+                  : state === "recorded"
+                  ? "Audio captured successfully"
+                  : state === "requesting"
+                  ? "Accessing microphone..."
+                  : "Microphone ready"}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Timer */}
@@ -376,6 +432,51 @@ export function AudioRecorder({
           </div>
         )}
       </div>
+
+      {/* Live Audio Level (VU Meter) when recording */}
+      {state === "recording" && (
+        <div className="rounded-xl border border-line bg-paper px-4 py-2.5 flex items-center gap-3 shadow-xs">
+          <Volume2
+            className={`w-4 h-4 shrink-0 transition-colors ${
+              isVoiceDetected ? "text-emerald-600" : "text-muted"
+            }`}
+          />
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-medium">
+              <span
+                className={
+                  isVoiceDetected
+                    ? "text-emerald-700 font-semibold"
+                    : "text-muted"
+                }
+              >
+                {isVoiceDetected
+                  ? "Microphone Input: Active (Voice Detected)"
+                  : "Microphone Input: Listening (Awaiting Speech...)"}
+              </span>
+              <span className="font-mono text-muted text-[10px]">
+                {volumeLevel}%
+              </span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-paper-2 overflow-hidden border border-line/60">
+              <div
+                className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-emerald-500 via-saffron to-terracotta"
+                style={{ width: `${Math.max(4, volumeLevel)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Silence tip if user speaks too softly */}
+      {state === "recording" && elapsedSec >= 4 && !isVoiceDetected && (
+        <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+          <span>
+            We haven&apos;t detected your voice yet. Please speak closer to your device or check your microphone settings.
+          </span>
+        </div>
+      )}
 
       {/* Error Callouts */}
       {state === "denied" && (

@@ -3,7 +3,17 @@ import { isCloudinaryConfigured, uploadBufferToCloudinary } from "@/lib/storage"
 import fs from "fs";
 import path from "path";
 
-const LOCAL_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+function getLocalUploadDir(): string {
+  const dir = process.env.VERCEL
+    ? path.join("/tmp", "uploads")
+    : path.join(process.cwd(), "public", "uploads");
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch {}
+  return dir;
+}
 
 export async function PUT(request: NextRequest) {
   try {
@@ -33,12 +43,9 @@ export async function PUT(request: NextRequest) {
     }
 
     // Local file save fallback
-    if (!fs.existsSync(LOCAL_UPLOAD_DIR)) {
-      fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
-    }
-
+    const uploadDir = getLocalUploadDir();
     const filename = path.basename(key);
-    const filePath = path.join(LOCAL_UPLOAD_DIR, filename);
+    const filePath = path.join(uploadDir, filename);
     fs.writeFileSync(filePath, buffer);
 
     return NextResponse.json({ success: true, key });

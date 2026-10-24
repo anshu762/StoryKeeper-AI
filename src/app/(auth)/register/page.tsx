@@ -32,13 +32,14 @@ function RegisterForm() {
 
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (session?.user) {
-      router.replace(callbackUrl);
+      window.location.assign(callbackUrl);
     }
-  }, [session, callbackUrl, router]);
+  }, [session, callbackUrl]);
 
   const {
     register,
@@ -72,9 +73,9 @@ function RegisterForm() {
         return;
       }
 
-      toast.success("Account created successfully! Welcome to the archive.");
-      router.push(callbackUrl);
-      router.refresh();
+      setIsRedirecting(true);
+      toast.success("Account created successfully! Opening your dashboard...");
+      window.location.assign(callbackUrl);
     } catch (err) {
       setErrorMessage("An unexpected error occurred. Please try again.");
       setIsLoading(false);
@@ -191,10 +192,15 @@ function RegisterForm() {
 
         <Button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isRedirecting}
           className="w-full h-11 text-base font-semibold mt-2"
         >
-          {isLoading ? (
+          {isRedirecting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span>Opening dashboard...</span>
+            </>
+          ) : isLoading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               <span>Creating account...</span>

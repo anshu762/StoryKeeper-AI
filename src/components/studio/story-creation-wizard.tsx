@@ -141,7 +141,7 @@ export function StoryCreationWizard({
     setUploadProgress(10);
 
     try {
-      // 1. Get presigned PUT URL
+      // 1. Get presigned upload URL (Direct Cloudinary or local fallback)
       const presignedRes = await fetch("/api/upload/presigned", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -152,25 +152,54 @@ export function StoryCreationWizard({
         }),
       });
 
-      if (!presignedRes.ok) {
-        const errorData = await presignedRes.json();
-        throw new Error(errorData.error || "Failed to generate upload URL");
+      let presignedData: any = null;
+      try {
+        const text = await presignedRes.text();
+        presignedData = JSON.parse(text);
+      } catch {
+        throw new Error("Unable to establish secure storage link. Please try again.");
       }
 
-      const { uploadUrl, key } = await presignedRes.json();
+      if (!presignedRes.ok || !presignedData) {
+        throw new Error(presignedData?.error || "Failed to generate upload URL");
+      }
+
+      const { uploadUrl, key, isDirectCloudinary, fields } = presignedData;
       setUploadProgress(35);
 
-      // 2. Direct PUT to R2 (or local fallback)
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": selectedAudioFile.type || "audio/wav",
-        },
-        body: selectedAudioFile,
-      });
+      // 2. Direct upload to Cloudinary (or local fallback endpoint)
+      if (isDirectCloudinary && fields) {
+        const formData = new FormData();
+        formData.append("file", selectedAudioFile);
+        Object.entries(fields).forEach(([k, v]) => {
+          formData.append(k, v as string);
+        });
 
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload audio file to storage");
+        const uploadRes = await fetch(uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          let errMsg = "Failed to upload audio to Cloudinary";
+          try {
+            const errJson = await uploadRes.json();
+            errMsg = errJson.error?.message || errMsg;
+          } catch {}
+          throw new Error(errMsg);
+        }
+      } else {
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": selectedAudioFile.type || "audio/wav",
+          },
+          body: selectedAudioFile,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload audio file to storage");
+        }
       }
 
       setUploadProgress(75);

@@ -33,10 +33,19 @@ if (hasCloudinaryCredentials) {
   }
 }
 
-// Local upload directory fallback for development
-const LOCAL_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
-if (!fs.existsSync(LOCAL_UPLOAD_DIR)) {
-  fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
+// Lazy, serverless-safe local upload directory resolver
+function getLocalUploadDir(): string {
+  const dir = process.env.VERCEL
+    ? path.join("/tmp", "uploads")
+    : path.join(process.cwd(), "public", "uploads");
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.warn("Could not create local upload directory:", err);
+  }
+  return dir;
 }
 
 export function isCloudinaryConfigured(): boolean {
@@ -50,24 +59,70 @@ function sanitizePublicId(key: string): string {
   return key.replace(/^\/+/, "").replace(/\.[^/.]+$/, "");
 }
 
+export interface PresignedUploadResult {
+  uploadUrl: string;
+  key: string;
+  isLocalFallback: boolean;
+  isDirectCloudinary?: boolean;
+  fields?: Record<string, string>;
+}
+
 /**
  * Generates an upload URL for direct browser audio upload.
- * If Cloudinary is configured, returns our secure upload endpoint that streams directly to Cloudinary.
+ * If Cloudinary is configured, returns signed direct Cloudinary upload endpoint & fields.
  * If in dev without Cloudinary, falls back to local upload endpoint.
  */
 export async function getPresignedUploadUrl(params: {
   key: string;
   mimeType: string;
   sizeBytes?: number;
-}): Promise<{ uploadUrl: string; key: string; isLocalFallback: boolean }> {
+}): Promise<PresignedUploadResult> {
   const { key } = params;
 
-  // We route client PUT uploads through /api/upload/file which streams to Cloudinary (or saves locally)
+  // 1. Direct signed upload to Cloudinary (bypasses serverless payload limit)
+  if (
+    hasCloudinaryCredentials &&
+    env.CLOUDINARY_CLOUD_NAME &&
+    env.CLOUDINARY_API_KEY &&
+    env.CLOUDINARY_API_SECRET
+  ) {
+    const timestamp = Math.round(Date.now() / 1000);
+    const publicId = sanitizePublicId(key);
+    const folder = "storykeeper_audio";
+
+    const paramsToSign = {
+      folder,
+      public_id: publicId,
+      timestamp,
+    };
+
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      env.CLOUDINARY_API_SECRET
+    );
+
+    return {
+      uploadUrl: `https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD_NAME}/video/upload`,
+      key,
+      isLocalFallback: false,
+      isDirectCloudinary: true,
+      fields: {
+        api_key: env.CLOUDINARY_API_KEY,
+        timestamp: timestamp.toString(),
+        signature,
+        folder,
+        public_id: publicId,
+      },
+    };
+  }
+
+  // 2. Local fallback endpoint for development
   const uploadUrl = `/api/upload/file?key=${encodeURIComponent(key)}`;
   return {
     uploadUrl,
     key,
-    isLocalFallback: !hasCloudinaryCredentials,
+    isLocalFallback: true,
+    isDirectCloudinary: false,
   };
 }
 
@@ -178,7 +233,7 @@ export async function fetchAudioBuffer(key: string): Promise<Buffer> {
   }
 
   // Check local upload directory first (for local dev or fallback)
-  const localFile = path.join(LOCAL_UPLOAD_DIR, path.basename(key));
+  const localFile = path.join(getLocalUploadDir(), path.basename(key));
   if (fs.existsSync(localFile)) {
     return fs.readFileSync(localFile);
   }
@@ -247,7 +302,7 @@ export async function deleteAudioObject(key: string | null | undefined): Promise
   }
 
   // 2. Delete from local storage if exists
-  const localFile = path.join(LOCAL_UPLOAD_DIR, path.basename(key));
+  const localFile = path.join(getLocalUploadDir(), path.basename(key));
   if (fs.existsSync(localFile)) {
     try {
       fs.unlinkSync(localFile);

@@ -77,9 +77,25 @@ export function getFriendlyErrorMessage(
     return "The server encountered a momentary delay. Please refresh or try again in a few moments.";
   }
 
-  // 7. Audio / Upload specific errors
-  if (lower.includes("failed to fetch") || lower.includes("network error")) {
-    return "Network connection issue. Please check your network and retry.";
+  // 7. Audio / Upload / Network specific errors
+  if (
+    lower.includes("failed to fetch") ||
+    lower.includes("network error") ||
+    lower.includes("load failed")
+  ) {
+    return "Network connection issue. Please check your internet connection and retry.";
+  }
+
+  // 8. JSON parse / HTML server error responses (e.g. Unexpected token '<', "<!DOCTYPE "...)
+  if (
+    lower.includes("unexpected token") ||
+    lower.includes("not valid json") ||
+    lower.includes("<!doctype") ||
+    lower.includes("doctype") ||
+    lower.includes("json.parse") ||
+    lower.includes("syntaxerror")
+  ) {
+    return "The archive server responded unexpectedly. Please check your recording and try again.";
   }
 
   // If the message is already short, human-friendly, and contains no code jargon, pass it through
