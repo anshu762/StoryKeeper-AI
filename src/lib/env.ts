@@ -24,7 +24,7 @@ const envSchema = z.object({
   // OpenRouter AI (Cost-effective Gemini Flash + Whisper STT)
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_STT_MODEL: z.string().default("openai/whisper-large-v3"),
-  OPENROUTER_LLM_MODEL: z.string().default("google/gemini-2.0-flash-001"),
+  OPENROUTER_LLM_MODEL: z.string().default("google/gemini-2.5-flash"),
 
   // Cloudinary Storage
   CLOUDINARY_CLOUD_NAME: z.string().optional(),

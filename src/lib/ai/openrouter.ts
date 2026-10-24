@@ -59,7 +59,12 @@ export class OpenRouterAiProvider implements AiProvider {
   constructor(apiKey?: string, sttModel?: string, llmModel?: string) {
     this.apiKey = apiKey || env.OPENROUTER_API_KEY || "";
     this.sttModel = sttModel || env.OPENROUTER_STT_MODEL || "openai/whisper-large-v3";
-    this.llmModel = llmModel || env.OPENROUTER_LLM_MODEL || "google/gemini-2.0-flash-001";
+    let model = llmModel || env.OPENROUTER_LLM_MODEL || "google/gemini-2.5-flash";
+    // Auto-normalize any retired or deprecated model ID from existing environments
+    if (model.includes("gemini-2.0-flash") || model.includes("gemini-1.5-flash")) {
+      model = "google/gemini-2.5-flash";
+    }
+    this.llmModel = model;
   }
 
   private checkApiKey() {
@@ -68,6 +73,89 @@ export class OpenRouterAiProvider implements AiProvider {
         "OPENROUTER_API_KEY is not configured. Please add your key to .env or use the test provider."
       );
     }
+  }
+
+  /**
+   * Resilient chat completion caller with automatic multi-model failover.
+   * If a model is deprecated, busy, or rate-limited, it automatically falls back
+   * to high-efficiency, verified alternative models without crashing.
+   */
+  private async callChatWithFallback(payload: {
+    messages: { role: string; content: string }[];
+    temperature?: number;
+    response_format?: { type: string };
+    timeoutMs?: number;
+  }): Promise<string> {
+    const candidateModels = Array.from(
+      new Set([
+        this.llmModel,
+        "google/gemini-2.5-flash",
+        "google/gemini-2.5-flash-lite",
+        "~google/gemini-flash-latest",
+        "google/gemini-3.7-flash",
+      ].filter(Boolean))
+    );
+
+    let lastError: Error | null = null;
+
+    for (const model of candidateModels) {
+      const controller = new AbortController();
+      const timeout = setTimeout(
+        () => controller.abort(),
+        payload.timeoutMs || 60000
+      );
+
+      try {
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai",
+            "X-Title": "StoryKeeper AI Oral History Archive",
+          },
+          body: JSON.stringify({
+            model,
+            messages: payload.messages,
+            temperature: payload.temperature ?? 0.2,
+            ...(payload.response_format
+              ? { response_format: payload.response_format }
+              : {}),
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn(
+            `[OPENROUTER LLM FALLBACK] Model ${model} returned HTTP ${response.status}: ${errorText.slice(0, 160)}`
+          );
+          lastError = new Error(
+            `OpenRouter LLM error (${response.status}): ${errorText.slice(0, 200)}`
+          );
+          continue;
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content?.trim() || "";
+        if (!content) {
+          lastError = new Error(`Model ${model} returned empty response content`);
+          continue;
+        }
+
+        return content;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[OPENROUTER LLM RETRY] Model ${model} failed:`, err?.message);
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw (
+      lastError ||
+      new Error("All AI processing models are temporarily busy. Please retry.")
+    );
   }
 
   /**
@@ -90,52 +178,70 @@ export class OpenRouterAiProvider implements AiProvider {
       ? "flac"
       : "wav";
 
-    const payload = {
-      model: this.sttModel,
-      input_audio: {
-        data: params.audioBase64,
-        format,
-      },
-    };
+    const sttCandidates = Array.from(
+      new Set([
+        this.sttModel,
+        "openai/whisper-large-v3",
+        "openai/gpt-audio-mini",
+      ].filter(Boolean))
+    );
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000); // 90s timeout
+    let lastError: Error | null = null;
 
-    try {
-      const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai",
-          "X-Title": "StoryKeeper AI Oral History Archive",
+    for (const model of sttCandidates) {
+      const payload = {
+        model,
+        input_audio: {
+          data: params.audioBase64,
+          format,
         },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+      };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenRouter STT error (${response.status}): ${errorText.slice(0, 300)}`
-        );
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90000); // 90s timeout
+
+      try {
+        const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai",
+            "X-Title": "StoryKeeper AI Oral History Archive",
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          lastError = new Error(
+            `OpenRouter STT error (${response.status}): ${errorText.slice(0, 200)}`
+          );
+          continue;
+        }
+
+        const data = await response.json();
+        const transcript = data.text || data.transcript || "";
+
+        if (!transcript || transcript.trim().length === 0) {
+          lastError = new Error("Speech-to-text returned an empty transcript");
+          continue;
+        }
+
+        return { transcript: transcript.trim() };
+      } catch (err: any) {
+        lastError = err;
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const data = await response.json();
-      const transcript = data.text || data.transcript || "";
-
-      if (!transcript || transcript.trim().length === 0) {
-        throw new Error("Speech-to-text returned an empty transcript");
-      }
-
-      return { transcript: transcript.trim() };
-    } finally {
-      clearTimeout(timeout);
     }
+
+    throw lastError || new Error("Failed to transcribe audio with available models");
   }
 
   /**
-   * English Translation via OpenRouter /api/v1/chat/completions
+   * English Translation via OpenRouter with automatic failover
    */
   async translateText(params: TranslateParams): Promise<{ translation: string }> {
     this.checkApiKey();
@@ -162,44 +268,17 @@ Text to translate:
 ${params.text}
 """`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const translation = await this.callChatWithFallback({
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      timeoutMs: 60000,
+    });
 
-    try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai",
-          "X-Title": "StoryKeeper AI Oral History Archive",
-        },
-        body: JSON.stringify({
-          model: this.llmModel,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.3,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenRouter translation error (${response.status}): ${errorText.slice(0, 300)}`
-        );
-      }
-
-      const data = await response.json();
-      const translation = data.choices?.[0]?.message?.content?.trim() || "";
-
-      if (!translation) {
-        throw new Error("Translation returned empty result");
-      }
-
-      return { translation };
-    } finally {
-      clearTimeout(timeout);
+    if (!translation) {
+      throw new Error("Translation returned empty result");
     }
+
+    return { translation };
   }
 
   /**
@@ -241,60 +320,33 @@ English Translation:
 ${params.translation}
 """`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const rawContent = await this.callChatWithFallback({
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      timeoutMs: 60000,
+    });
 
+    // Parse and validate with Zod
+    let parsedJson: any;
     try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai",
-          "X-Title": "StoryKeeper AI Oral History Archive",
-        },
-        body: JSON.stringify({
-          model: this.llmModel,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.2,
-          response_format: { type: "json_object" },
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenRouter analysis error (${response.status}): ${errorText.slice(0, 300)}`
-        );
-      }
-
-      const data = await response.json();
-      const rawContent = data.choices?.[0]?.message?.content?.trim() || "";
-
-      // Parse and validate with Zod
-      let parsedJson: any;
-      try {
-        const cleanJson = rawContent
-          .replace(/^```json\s*/i, "")
-          .replace(/^```\s*/i, "")
-          .replace(/```$/i, "")
-          .trim();
-        parsedJson = JSON.parse(cleanJson);
-      } catch (jsonErr) {
-        // Attempt 1x repair prompt
-        return await this.repairJsonAnalysis(rawContent, params);
-      }
-
-      const validation = StoryAnalysisSchema.safeParse(parsedJson);
-      if (!validation.success) {
-        return await this.repairJsonAnalysis(rawContent, params);
-      }
-
-      return validation.data;
-    } finally {
-      clearTimeout(timeout);
+      const cleanJson = rawContent
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```$/i, "")
+        .trim();
+      parsedJson = JSON.parse(cleanJson);
+    } catch {
+      // Attempt 1x repair prompt
+      return await this.repairJsonAnalysis(rawContent, params);
     }
+
+    const validation = StoryAnalysisSchema.safeParse(parsedJson);
+    if (!validation.success) {
+      return await this.repairJsonAnalysis(rawContent, params);
+    }
+
+    return validation.data;
   }
 
   private async repairJsonAnalysis(
@@ -315,26 +367,12 @@ Fix it and return a valid JSON object matching:
 
 Output ONLY valid JSON without backticks or markdown.`;
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": env.NEXT_PUBLIC_APP_URL || "https://storykeeper.ai",
-      },
-      body: JSON.stringify({
-        model: this.llmModel,
-        messages: [{ role: "user", content: repairPrompt }],
-        temperature: 0.1,
-      }),
+    const repairedText = await this.callChatWithFallback({
+      messages: [{ role: "user", content: repairPrompt }],
+      temperature: 0.1,
+      timeoutMs: 45000,
     });
 
-    if (!response.ok) {
-      throw new Error("JSON repair failed on OpenRouter");
-    }
-
-    const data = await response.json();
-    const repairedText = data.choices?.[0]?.message?.content?.trim() || "";
     const clean = repairedText
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")

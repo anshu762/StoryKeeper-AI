@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import { UploadCloud, FileAudio, X, AlertCircle, CheckCircle, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/lib/utils";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 const MAX_DURATION_SEC = 15 * 60; // 15 min
@@ -199,7 +200,12 @@ export function AudioUploader({ onFileSelected, disabled = false }: AudioUploade
       {errorMessage && (
         <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2.5">
           <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-          <span>{errorMessage}</span>
+          <span>
+            {getFriendlyErrorMessage(
+              errorMessage,
+              "Could not validate audio file. Please try a standard MP3, WAV, or M4A file."
+            )}
+          </span>
         </div>
       )}
     </div>

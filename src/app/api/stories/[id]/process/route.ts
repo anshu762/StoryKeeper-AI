@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { runAiPipeline } from "@/server/ai/pipeline";
 import { after } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 export const maxDuration = 300; // 5 minutes max on serverless
 
@@ -77,7 +78,12 @@ export async function POST(
   } catch (error: any) {
     console.error("[AI TRIGGER ROUTE ERROR]", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to trigger AI processing" },
+      {
+        error: getFriendlyErrorMessage(
+          error,
+          "Failed to start automated transcription. Please try again."
+        ),
+      },
       { status: 500 }
     );
   }

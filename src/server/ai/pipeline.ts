@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { AiProvider, getAiProvider } from "@/lib/ai/openrouter";
 import { fetchAudioBuffer } from "@/lib/storage";
 import { splitTextIntoChunks } from "./chunking";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import slugify from "slugify";
 
 export interface PipelineResult {
@@ -78,11 +79,18 @@ export async function runAiPipeline(
     });
 
     if (job) {
+      const sanitizedError = error
+        ? getFriendlyErrorMessage(
+            error,
+            "An automated preservation step encountered a brief delay. You can retry or proceed to review manually."
+          )
+        : null;
+
       await prisma.aiJob.update({
         where: { id: job.id },
         data: {
           status,
-          errorMessage: error || null,
+          errorMessage: sanitizedError,
           retryCount: status === "FAILED" ? { increment: 1 } : undefined,
           startedAt: status === "PROCESSING" ? new Date() : undefined,
           completedAt: status === "COMPLETED" ? new Date() : undefined,

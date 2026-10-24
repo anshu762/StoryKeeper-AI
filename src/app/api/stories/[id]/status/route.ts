@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 export async function GET(
   request: NextRequest,
@@ -60,6 +61,16 @@ export async function GET(
 
     const hasFailed = story.aiJobs.some((j) => j.status === "FAILED");
 
+    const sanitizedAiJobs = story.aiJobs.map((j) => ({
+      ...j,
+      errorMessage: j.errorMessage
+        ? getFriendlyErrorMessage(
+            j.errorMessage,
+            "A temporary delay occurred during processing. Please try again or continue manually."
+          )
+        : null,
+    }));
+
     return NextResponse.json({
       story: {
         id: story.id,
@@ -71,14 +82,19 @@ export async function GET(
         translationAi: story.translationAi,
         summaryAi: story.summaryAi,
       },
-      aiJobs: story.aiJobs,
+      aiJobs: sanitizedAiJobs,
       isCompleted,
       hasFailed,
     });
   } catch (err: any) {
     console.error("[STORY STATUS ERROR]", err);
     return NextResponse.json(
-      { error: err?.message || "Failed to fetch story status" },
+      {
+        error: getFriendlyErrorMessage(
+          err,
+          "Unable to check story processing status. Please refresh."
+        ),
+      },
       { status: 500 }
     );
   }

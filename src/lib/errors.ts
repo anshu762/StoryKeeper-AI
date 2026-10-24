@@ -98,11 +98,82 @@ export function getFriendlyErrorMessage(
     return "The archive server responded unexpectedly. Please check your recording and try again.";
   }
 
-  // If the message is already short, human-friendly, and contains no code jargon, pass it through
+  // 9. AI Provider / OpenRouter / Model specific errors (Never show technical model or provider JSON to users)
   if (
-    rawMessage.length < 140 &&
-    !rawMessage.includes("{") &&
-    !rawMessage.includes("}") &&
+    lower.includes("openrouter") ||
+    lower.includes("no provider serves this model") ||
+    lower.includes("is no longer available") ||
+    lower.includes("translation error") ||
+    lower.includes("stt error") ||
+    lower.includes("speech-to-text") ||
+    lower.includes("gemini") ||
+    lower.includes("whisper") ||
+    lower.includes("openai") ||
+    lower.includes("claude") ||
+    lower.includes("user_id") ||
+    lower.includes("rate limit") ||
+    lower.includes("quota") ||
+    lower.includes("insufficient_quota") ||
+    lower.includes("credits") ||
+    lower.includes("model ") ||
+    lower.includes("json repair failed")
+  ) {
+    if (lower.includes("transcription") || lower.includes("stt") || lower.includes("speech")) {
+      return "The automated speech transcription is taking longer than expected. Your audio is safely saved; you can retry or continue manually.";
+    }
+    if (lower.includes("translation") || lower.includes("translate")) {
+      return "The automated translation service experienced a brief delay. Your original transcript is safe; please click retry or continue to edit.";
+    }
+    if (lower.includes("analysis") || lower.includes("summary") || lower.includes("theme")) {
+      return "The story analysis service is momentarily delayed. Your story details are safe; please click retry or review manually.";
+    }
+    return "The automated preservation service experienced a momentary delay. Your recorded memory is completely safe; please click retry or continue manually.";
+  }
+
+  // 10. Reject any raw JSON, stack trace or error response code strings
+  if (
+    rawMessage.includes("{") ||
+    rawMessage.includes("}") ||
+    rawMessage.includes("Error:") ||
+    rawMessage.includes("status:") ||
+    rawMessage.includes("code:") ||
+    rawMessage.includes("404") ||
+    rawMessage.includes("500") ||
+    rawMessage.includes("502") ||
+    rawMessage.includes("503") ||
+    rawMessage.includes("<!") ||
+    rawMessage.includes("/>") ||
+    rawMessage.includes("http") ||
+    rawMessage.includes(".ts:") ||
+    rawMessage.includes(".js:")
+  ) {
+    return fallback;
+  }
+
+  // If the message is already short, human-friendly, and contains no code jargon, pass it through
+  const technicalKeywords = [
+    "undefined",
+    "null",
+    "token",
+    "jwt",
+    "api",
+    "endpoint",
+    "sql",
+    "db",
+    "prisma",
+    "postgres",
+    "server",
+    "payload",
+    "json",
+    "chunk",
+    "object",
+    "array",
+  ];
+  const containsTechnicalWord = technicalKeywords.some((w) => lower.includes(w));
+
+  if (
+    !containsTechnicalWord &&
+    rawMessage.length < 120 &&
     !rawMessage.includes("at ") &&
     !rawMessage.includes("\n")
   ) {

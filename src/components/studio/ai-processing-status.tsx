@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface AiJobItem {
   id: string;
@@ -61,7 +62,12 @@ export function AiProcessingStatus({
           (j: AiJobItem) => j.status === "FAILED"
         );
         if (failedJob?.errorMessage) {
-          setFailedMessage(failedJob.errorMessage);
+          setFailedMessage(
+            getFriendlyErrorMessage(
+              failedJob.errorMessage,
+              "An automated preservation step encountered a brief delay. Your recording is safely preserved."
+            )
+          );
         }
 
         if (data.isCompleted) {
@@ -249,8 +255,10 @@ export function AiProcessingStatus({
       {hasFailed && (
         <div className="rounded-2xl border border-red-200 bg-red-50/80 p-5 space-y-3">
           <p className="text-xs text-red-800 leading-relaxed">
-            {failedMessage ||
-              "An error occurred while connecting to the AI provider. You can retry the step, or proceed to type or paste the transcript manually."}
+            {getFriendlyErrorMessage(
+              failedMessage,
+              "An automated step encountered a temporary delay. Your original recording is safely preserved—you can retry or continue to review and edit manually."
+            )}
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button
