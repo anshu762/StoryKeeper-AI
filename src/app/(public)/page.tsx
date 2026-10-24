@@ -211,24 +211,24 @@ export default async function HomePage() {
             Join the Community Preservation Trust
           </span>
 
-          <h2 className="font-serif text-3xl sm:text-5xl font-medium tracking-tight text-ink leading-tight">
+          <h2 className="font-serif text-2xl sm:text-4xl md:text-5xl font-medium tracking-tight text-ink leading-tight">
             Whose voice will disappear <br className="hidden sm:inline" />
             if you don’t record it today?
           </h2>
 
-          <p className="text-base sm:text-lg text-muted max-w-xl mx-auto leading-relaxed font-sans">
+          <p className="text-sm sm:text-lg text-muted max-w-xl mx-auto leading-relaxed font-sans">
             It takes just 5 minutes to record a grandmother’s recipe, a village song,
             or a memory of migration. Free, ethical, and protected forever.
           </p>
 
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
-            <Button asChild size="lg" className="rounded-2xl gap-2 shadow-warm">
+          <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 max-w-md sm:max-w-none mx-auto">
+            <Button asChild size="lg" className="rounded-2xl gap-2 shadow-warm justify-center">
               <Link href="/dashboard/stories/new">
                 <Mic className="h-4 w-4" />
                 <span>Start Recording Now</span>
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-2xl gap-2 bg-white/70">
+            <Button asChild variant="outline" size="lg" className="rounded-2xl gap-2 bg-white/70 justify-center">
               <Link href="/archive">
                 <Search className="h-4 w-4" />
                 <span>Explore the Catalog</span>

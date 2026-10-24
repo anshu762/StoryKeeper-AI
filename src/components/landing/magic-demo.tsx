@@ -26,11 +26,11 @@ export function MagicDemo() {
           {/* Header Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-line bg-paper-2/60 px-4 sm:px-6 py-4 gap-4">
             {/* View Switcher Tabs */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-paper border border-line overflow-x-auto scrollbar-none max-w-full">
+            <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-paper border border-line overflow-x-auto scrollbar-none max-w-full">
               <button
                 onClick={() => setActiveTab("original")}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0",
+                  "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all whitespace-nowrap shrink-0",
                   activeTab === "original"
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"
@@ -41,7 +41,7 @@ export function MagicDemo() {
               <button
                 onClick={() => setActiveTab("translation")}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0",
+                  "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all whitespace-nowrap shrink-0",
                   activeTab === "translation"
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"
@@ -52,7 +52,7 @@ export function MagicDemo() {
               <button
                 onClick={() => setActiveTab("summary")}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0",
+                  "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all whitespace-nowrap shrink-0",
                   activeTab === "summary"
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"
@@ -64,7 +64,7 @@ export function MagicDemo() {
 
             {/* Badge */}
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-saffron-subtle text-[#8C5E0D] border border-saffron/30">
+              <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-medium bg-saffron-subtle text-[#8C5E0D] border border-saffron/30">
                 <Sparkles className="h-3.5 w-3.5 text-saffron" />
                 <span>AI-generated · reviewed by humans</span>
               </span>
@@ -72,7 +72,7 @@ export function MagicDemo() {
           </div>
 
           {/* Animated Panel Display */}
-          <div className="p-8 sm:p-12 min-h-[260px] flex items-center justify-center">
+          <div className="p-5 sm:p-8 md:p-12 min-h-[240px] sm:min-h-[260px] flex items-center justify-center">
             <AnimatePresence mode="wait">
               {activeTab === "original" && (
                 <motion.div
@@ -86,7 +86,7 @@ export function MagicDemo() {
                   <span className="text-xs font-bold uppercase tracking-wider text-terracotta">
                     Original Dialect Transcript (Devanagari Script)
                   </span>
-                  <p className="font-devanagari-serif text-2xl sm:text-3xl text-ink leading-relaxed">
+                  <p className="font-devanagari-serif text-xl sm:text-2xl md:text-3xl text-ink leading-relaxed">
                     &ldquo;हमरे बचपन में जब दादी चूल्हे पर रोटी सेकती थीं, तब पूरे आँगन में महुए के फूल की खुशबू फैल जाती थी। जाड़े के दिनों में हम सब भाई-बहन मिट्टी के चूल्हे के चारों तरफ बैठ जाते थे।&rdquo;
                   </p>
                   <p className="text-xs text-muted">
@@ -107,7 +107,7 @@ export function MagicDemo() {
                   <span className="text-xs font-bold uppercase tracking-wider text-terracotta">
                     Faithful English Translation
                   </span>
-                  <p className="font-serif text-2xl sm:text-3xl text-ink leading-relaxed italic">
+                  <p className="font-serif text-xl sm:text-2xl md:text-3xl text-ink leading-relaxed italic">
                     &ldquo;In our childhood, when my grandmother baked flatbreads on the clay stove, the fragrance of mahua flowers would spread across the courtyard. On winter mornings, all of us siblings gathered closely around the earthen hearth.&rdquo;
                   </p>
                   <p className="text-xs text-muted">
@@ -128,7 +128,7 @@ export function MagicDemo() {
                   <span className="text-xs font-bold uppercase tracking-wider text-terracotta">
                     Key Themes & Context
                   </span>
-                  <p className="font-sans text-lg text-ink leading-relaxed">
+                  <p className="font-sans text-base sm:text-lg text-ink leading-relaxed">
                     A warm reflection on winter mornings in rural Bhojpur during the late 1960s, describing the ritual of communal cooking on clay stoves and the heirloom recipe for mahua flower flatbread.
                   </p>
                   <div className="flex flex-wrap gap-2 pt-2">

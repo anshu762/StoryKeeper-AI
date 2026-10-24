@@ -121,7 +121,7 @@ export function HowItWorks() {
                       isEven ? "sm:pr-12 sm:text-right" : "sm:pl-12 sm:order-2"
                     }`}
                   >
-                    <div className="rounded-3xl border border-line bg-white p-6 sm:p-8 shadow-warm hover:shadow-warm-lg transition-all space-y-3">
+                    <div className="rounded-3xl border border-line bg-white p-5 sm:p-8 shadow-warm hover:shadow-warm-lg transition-all space-y-3">
                       <div
                         className={`flex items-center gap-3 ${
                           isEven ? "sm:justify-end" : "justify-start"
@@ -135,7 +135,7 @@ export function HowItWorks() {
                         </span>
                       </div>
 
-                      <h3 className="font-serif text-2xl font-medium text-ink">
+                      <h3 className="font-serif text-xl sm:text-2xl font-medium text-ink">
                         {step.title}
                       </h3>
 

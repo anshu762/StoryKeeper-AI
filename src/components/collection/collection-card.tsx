@@ -212,14 +212,14 @@ export function CollectionCard({
 
         {/* Big typography title on gradient */}
         <div className="relative z-10">
-          <h3 className="font-serif text-2xl font-medium tracking-tight text-white group-hover:underline underline-offset-4 decoration-white/60">
+          <h3 className="font-serif text-xl sm:text-2xl font-medium tracking-tight text-white group-hover:underline underline-offset-4 decoration-white/60">
             {name}
           </h3>
         </div>
       </div>
 
       {/* Description & Explore */}
-      <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
+      <div className="p-5 sm:p-6 flex flex-col justify-between flex-1 space-y-3 sm:space-y-4">
         <p className="text-sm text-muted line-clamp-3 leading-relaxed">
           {description}
         </p>

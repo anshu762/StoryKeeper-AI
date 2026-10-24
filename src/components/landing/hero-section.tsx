@@ -144,9 +144,9 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="pt-2 flex flex-wrap items-center gap-4"
+              className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
             >
-              <Button asChild size="lg" className="rounded-2xl text-base gap-2 shadow-warm">
+              <Button asChild size="lg" className="rounded-2xl text-base gap-2 shadow-warm justify-center">
                 <Link href="/archive">
                   <Search className="h-4 w-4" />
                   <span>Explore the Archive</span>
@@ -156,7 +156,7 @@ export function HeroSection() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="rounded-2xl text-base gap-2 bg-white/60 hover:bg-white"
+                className="rounded-2xl text-base gap-2 bg-white/60 hover:bg-white justify-center"
               >
                 <Link href="/dashboard/stories/new">
                   <Mic className="h-4 w-4 text-terracotta" />
@@ -201,7 +201,7 @@ export function HeroSection() {
             </div>
 
             {/* Floating "Now Playing" Card */}
-            <div className="rounded-3xl border border-line bg-white/95 backdrop-blur-xl p-6 sm:p-7 shadow-warm-lg space-y-4 hover:shadow-2xl transition-all">
+            <div className="rounded-3xl border border-line bg-white/95 backdrop-blur-xl p-5 sm:p-7 shadow-warm-lg space-y-4 hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="flex h-2.5 w-2.5 rounded-full bg-moss animate-pulse" />
@@ -263,7 +263,7 @@ export function HeroSection() {
               </div>
 
               {/* Audio Play Trigger & Duration */}
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
                 <Button
                   onClick={toggleSampleAudio}
                   variant="default"

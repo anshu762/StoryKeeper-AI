@@ -52,7 +52,7 @@ export function EthicsPromise() {
           }
         />
 
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {pillars.map((pillar, idx) => (
             <motion.div
               key={pillar.title}
@@ -60,7 +60,7 @@ export function EthicsPromise() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: idx * 0.1 }}
-              className="rounded-3xl border border-line bg-white p-7 shadow-warm hover:shadow-warm-lg hover:-translate-y-1 transition-all flex flex-col justify-between"
+              className="rounded-3xl border border-line bg-white p-5 sm:p-7 shadow-warm hover:shadow-warm-lg hover:-translate-y-1 transition-all flex flex-col justify-between"
             >
               <div className="space-y-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper-2 border border-line">

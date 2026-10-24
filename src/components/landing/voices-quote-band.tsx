@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Quote, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,23 +74,58 @@ export function VoicesQuoteBand() {
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % quotes.length);
     }, 7000);
-    return () => clearInterval(timer);
   }, [quotes.length]);
+
+  useEffect(() => {
+    if (!isPaused) {
+      startTimer();
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPaused, startTimer]);
+
+  const selectQuote = (index: number) => {
+    setCurrentIndex(index);
+    if (!isPaused) startTimer();
+  };
+
+  const nextQuote = () => {
+    setCurrentIndex((prev) => (prev + 1) % quotes.length);
+    if (!isPaused) startTimer();
+  };
+
+  const prevQuote = () => {
+    setCurrentIndex((prev) => (prev - 1 + quotes.length) % quotes.length);
+    if (!isPaused) startTimer();
+  };
 
   const activeQuote = quotes[currentIndex];
 
   return (
-    <section className="py-16 sm:py-24 border-b border-line bg-gradient-to-br from-[#271E19] via-[#352520] to-[#1F1A17] text-[#FBF7F0] relative overflow-hidden">
+    <section
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
+      className="py-14 sm:py-24 border-b border-line bg-gradient-to-br from-[#271E19] via-[#352520] to-[#1F1A17] text-[#FBF7F0] relative overflow-hidden select-none"
+    >
       {/* Decorative large background quote glyph */}
       <Quote className="absolute -bottom-10 -right-6 h-64 w-64 text-white/5 pointer-events-none" />
 
       <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/15">
+        <div className="flex items-center justify-between mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-white/15">
           <span className="text-xs font-semibold uppercase tracking-widest text-saffron">
             Voices from the Archive
           </span>
@@ -99,11 +134,7 @@ export function VoicesQuoteBand() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() =>
-                setCurrentIndex(
-                  (prev) => (prev - 1 + quotes.length) % quotes.length
-                )
-              }
+              onClick={prevQuote}
               className="h-8 w-8 rounded-lg border-white/20 text-white bg-white/10 hover:bg-white/20 hover:text-white"
               aria-label="Previous quote"
             >
@@ -112,9 +143,7 @@ export function VoicesQuoteBand() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() =>
-                setCurrentIndex((prev) => (prev + 1) % quotes.length)
-              }
+              onClick={nextQuote}
               className="h-8 w-8 rounded-lg border-white/20 text-white bg-white/10 hover:bg-white/20 hover:text-white"
               aria-label="Next quote"
             >
@@ -123,21 +152,21 @@ export function VoicesQuoteBand() {
           </div>
         </div>
 
-        <div className="min-h-[180px] flex flex-col justify-center">
+        <div className="min-h-[220px] sm:min-h-[190px] flex flex-col justify-center">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-4"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-3 sm:space-y-4"
             >
-              <blockquote className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal leading-relaxed text-[#FBF7F0]">
+              <blockquote className="font-serif text-xl sm:text-2xl md:text-3xl lg:text-4xl font-normal leading-relaxed text-[#FBF7F0]">
                 &ldquo;{activeQuote.original}&rdquo;
               </blockquote>
 
-              <p className="text-sm sm:text-base text-[#E4DACB]/80 font-sans italic max-w-3xl">
+              <p className="text-xs sm:text-sm md:text-base text-[#E4DACB]/80 font-sans italic max-w-3xl leading-relaxed">
                 &ldquo;{activeQuote.translation}&rdquo;
               </p>
 
@@ -154,19 +183,24 @@ export function VoicesQuoteBand() {
           </AnimatePresence>
         </div>
 
-        {/* Dots */}
-        <div className="flex items-center gap-1.5 pt-8">
+        {/* Carousel Progress Dots */}
+        <div className="flex items-center gap-1 sm:gap-1.5 pt-6 sm:pt-8 flex-wrap">
           {quotes.map((_, i) => (
             <button
               key={i}
-              onClick={() => setCurrentIndex(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === currentIndex
-                  ? "w-8 bg-terracotta"
-                  : "w-2 bg-white/30 hover:bg-white/50"
-              }`}
-              aria-label={`Go to quote ${i + 1}`}
-            />
+              type="button"
+              onClick={() => selectQuote(i)}
+              className="py-2.5 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta rounded-full"
+              aria-label={`Go to quote ${i + 1} of ${quotes.length}`}
+            >
+              <span
+                className={`block h-2 rounded-full transition-all duration-300 ${
+                  i === currentIndex
+                    ? "w-7 sm:w-8 bg-terracotta shadow-xs"
+                    : "w-2 sm:w-2.5 bg-white/30 hover:bg-white/60"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>

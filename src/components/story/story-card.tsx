@@ -47,8 +47,8 @@ export function StoryCard({
       : contributorName;
 
   return (
-    <Card className="group relative flex flex-col justify-between overflow-hidden border border-line/80 bg-white/90 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-terracotta/40 hover:shadow-warm-lg">
-      <div className="space-y-3.5">
+    <Card className="group relative flex flex-col justify-between overflow-hidden border border-line/80 bg-white/90 p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1 hover:border-terracotta/40 hover:shadow-warm-lg">
+      <div className="space-y-3 sm:space-y-3.5">
         {/* Top Badges */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -68,7 +68,7 @@ export function StoryCard({
 
         {/* Title */}
         <Link href={`/stories/${slug}`} className="block focus:outline-none">
-          <h3 className="font-serif text-xl sm:text-2xl font-medium text-ink transition-colors group-hover:text-terracotta leading-snug">
+          <h3 className="font-serif text-lg sm:text-xl md:text-2xl font-medium text-ink transition-colors group-hover:text-terracotta leading-snug">
             {title}
           </h3>
         </Link>
@@ -114,12 +114,12 @@ export function StoryCard({
         </div>
 
         {audioDurationSec ? (
-          <div className="flex items-center gap-1.5 font-medium text-ink bg-paper-2 px-2.5 py-1 rounded-full text-[11px]">
+          <div className="flex items-center gap-1.5 font-medium text-ink bg-paper-2 px-2.5 py-1 rounded-full text-[11px] shrink-0">
             <Volume2 className="h-3.5 w-3.5 text-terracotta" />
             <span>{formatDuration(audioDurationSec)}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 text-muted text-[11px]">
+          <div className="flex items-center gap-1 text-muted text-[11px] shrink-0">
             <Clock className="h-3 w-3" />
             <span>Audio Story</span>
           </div>

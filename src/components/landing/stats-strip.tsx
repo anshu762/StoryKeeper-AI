@@ -59,7 +59,7 @@ export function StatsStrip({
   return (
     <section className="py-12 sm:py-16 border-b border-line bg-paper">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
           {stats.map((s, idx) => (
             <motion.div
               key={s.label}
@@ -67,13 +67,13 @@ export function StatsStrip({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: idx * 0.1 }}
-              className="flex flex-col items-center sm:items-start p-6 rounded-2xl border border-line/60 bg-white/70 shadow-xs"
+              className="flex flex-col items-center sm:items-start p-3.5 sm:p-6 rounded-2xl border border-line/60 bg-white/70 shadow-xs"
             >
-              <div className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-ink tracking-tight flex items-baseline text-terracotta">
+              <div className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-ink tracking-tight flex items-baseline text-terracotta">
                 <Counter end={s.value} />
                 <span>{s.suffix}</span>
               </div>
-              <p className="text-xs sm:text-sm text-muted font-sans font-medium mt-1 text-center sm:text-left">
+              <p className="text-[11px] sm:text-sm text-muted font-sans font-medium mt-1 text-center sm:text-left">
                 {s.label}
               </p>
             </motion.div>
