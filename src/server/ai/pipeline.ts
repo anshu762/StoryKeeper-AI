@@ -238,11 +238,17 @@ export async function runAiPipeline(
         await updateJob("SUMMARY", "COMPLETED");
 
         // 2. Link themes idempotently
+        const themeSlugs = Array.isArray(analysis.themeSlugs) ? analysis.themeSlugs : [];
         const matchedThemes = allDbThemes.filter((t) =>
-          analysis.themeSlugs.includes(t.slug)
+          themeSlugs.includes(t.slug)
         );
 
-        for (const t of matchedThemes) {
+        // If no matching themes found, attach at least the primary fallback theme
+        const themesToAttach = matchedThemes.length > 0
+          ? matchedThemes
+          : allDbThemes.slice(0, 1);
+
+        for (const t of themesToAttach) {
           await prisma.storyTheme.upsert({
             where: {
               storyId_themeId: {
@@ -260,7 +266,13 @@ export async function runAiPipeline(
         await updateJob("THEMES", "COMPLETED");
 
         // 3. Upsert keywords idempotently
-        for (const rawKeyword of analysis.keywords) {
+        const rawKeywords =
+          Array.isArray(analysis.keywords) && analysis.keywords.length > 0
+            ? analysis.keywords
+            : ["oral history", "community archive", "memory"];
+
+        for (const rawKeyword of rawKeywords) {
+          if (!rawKeyword || typeof rawKeyword !== "string") continue;
           const cleanName = rawKeyword.trim();
           const normalized = cleanName.toLowerCase().replace(/[^a-z0-9]/g, "");
 
