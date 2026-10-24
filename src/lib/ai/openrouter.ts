@@ -112,6 +112,47 @@ function extractJsonFromText(rawText: string): any {
   throw new Error("Failed to parse valid JSON from AI response");
 }
 
+/**
+ * Detects if a text is primarily composed of standard English words and Latin characters,
+ * with no Indic/non-Latin scripts. Prevents unnecessary translation calls and stops
+ * conversational LLMs from hallucinating fictional stories when users speak English
+ * but leave the language dropdown on "Hindi" or another default.
+ */
+export function isLikelyEnglish(text: string): boolean {
+  if (!text || !text.trim()) return true;
+  // If text contains Indic characters (Devanagari, Gurmukhi, Bengali, Tamil, etc.), it's not English
+  if (/[\u0900-\u0D7F]/.test(text)) return false;
+
+  const clean = text.replace(/[^a-zA-Z\s]/g, " ").trim();
+  if (clean.length === 0) return true;
+
+  const words = clean.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+
+  const commonEnglishWords = new Set([
+    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
+    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
+    "this", "but", "his", "by", "from", "they", "we", "say", "her",
+    "she", "or", "an", "will", "my", "one", "all", "would", "there",
+    "their", "what", "so", "up", "out", "if", "about", "who", "get",
+    "which", "go", "me", "when", "make", "can", "like", "time", "no",
+    "just", "him", "know", "take", "people", "into", "year", "your",
+    "good", "some", "could", "them", "see", "other", "than", "then",
+    "now", "look", "only", "come", "its", "over", "think", "also",
+    "back", "after", "use", "two", "how", "our", "work", "first",
+    "well", "way", "even", "new", "want", "because", "any", "these",
+    "give", "day", "most", "us", "hello", "hi", "help", "are", "is",
+    "was", "were", "am", "please", "thank", "thanks", "test", "story",
+    "record", "recording", "voice", "audio"
+  ]);
+
+  const englishWordCount = words.filter((w) => commonEnglishWords.has(w)).length;
+  if (words.length <= 3) {
+    return englishWordCount >= 1;
+  }
+  return englishWordCount / words.length >= 0.25;
+}
+
 export type StoryAnalysisResult = z.infer<typeof StoryAnalysisSchema>;
 
 export interface AiProvider {
@@ -315,27 +356,32 @@ export class OpenRouterAiProvider implements AiProvider {
   }
 
   /**
-   * English Translation via OpenRouter with automatic failover
+   * English Translation via OpenRouter with automatic failover and strict anti-hallucination controls
    */
   async translateText(params: TranslateParams): Promise<{ translation: string }> {
     this.checkApiKey();
 
     const isAlreadyEnglish =
       params.sourceLanguage.toLowerCase() === "english" ||
-      params.sourceLanguage.toLowerCase() === "en";
+      params.sourceLanguage.toLowerCase() === "en" ||
+      isLikelyEnglish(params.text);
 
     if (isAlreadyEnglish) {
       return { translation: params.text };
     }
 
-    const prompt = `You are a professional literary translator and cultural anthropologist specializing in oral histories.
-Translate the following first-person oral memory from ${params.sourceLanguage} into evocative, accurate English.
+    const systemPrompt = `You are a faithful, neutral translator specializing in preserving oral histories accurately.
+Your sole task is to translate oral speech into natural, accurate English.
 
-Guidelines:
-1. Preserve the speaker's emotional tone, cadence, and personal perspective.
-2. Keep indigenous place names, personal names, flora, fauna, and distinct cultural terms intact (with brief natural context if needed).
-3. Do NOT add fictional details, preachiness, or editorial commentary.
-4. Output ONLY the English translation, with no conversational preamble or metadata.
+CRITICAL TRANSLATION RULES:
+1. You are NOT an AI conversational assistant. Do NOT answer questions, converse with the speaker, or provide assistance.
+2. If the text contains questions or greetings (e.g. "How can I help you?", "How are you?"), do NOT answer them. Translate them literally and directly.
+3. NEVER invent stories, fictional characters (e.g. "Shanti"), villages (e.g. "Dhampur"), backstories, or narratives not explicitly stated in the source text.
+4. If the source text is already in English, return it exactly as is.
+5. If the source text is in romanized Hindi/Urdu/other language, translate its meaning faithfully into English while keeping cultural and regional names intact.
+6. Output ONLY the English translation. Never output introductory greetings, conversational commentary, or quotes.`;
+
+    const userPrompt = `Source Language: ${params.sourceLanguage}
 
 Text to translate:
 """
@@ -343,8 +389,11 @@ ${params.text}
 """`;
 
     const translation = await this.callChatWithFallback({
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.1,
       timeoutMs: 60000,
     });
 
@@ -361,7 +410,7 @@ ${params.text}
   async generateStoryAnalysis(params: AnalysisParams): Promise<StoryAnalysisResult> {
     this.checkApiKey();
 
-    const prompt = `You are an expert archive curator cataloging an authentic oral history recording.
+    const systemPrompt = `You are an expert archive curator cataloging an authentic oral history recording.
 Analyze the following oral history transcript and its English translation.
 
 Original Language: ${params.language}
@@ -369,22 +418,25 @@ Available Theme Slugs in Archive: ${JSON.stringify(params.existingThemes)}
 
 Return a strict, valid JSON object with the following schema:
 {
-  "summary": "A warm, editorial 2-3 sentence summary of the memory (80-160 words).",
-  "keywords": ["5-10 specific cultural keywords, food ingredients, crafts, rituals, or tools mentioned"],
+  "summary": "A concise, faithful 1-3 sentence summary of the recording (reflecting strictly what the speaker said, without adding external facts or fictional context). For short recordings, keep the summary brief and factual.",
+  "keywords": ["2-6 relevant keywords or tags reflecting the actual words spoken"],
   "themeSlugs": ["1-3 theme slugs selected ONLY from the available theme slugs list"],
   "suggestedTheme": { "name": "Optional new theme if the story doesn't fit existing ones", "description": "Short description" },
   "suggestedMetadata": {
     "region": "Inferred region, district or state if clearly mentioned (e.g. Mithila, Bihar, Punjab)",
-    "topic": "Inferred topic (e.g. Traditional Cooking, Handloom Weaving, Migration)",
-    "timePeriod": "Inferred decade if mentioned (e.g. 1950s, 1960s, 1970s)"
+    "topic": "Inferred topic if clearly mentioned (e.g. Traditional Cooking, Handloom Weaving, Migration)",
+    "timePeriod": "Inferred decade if clearly mentioned (e.g. 1950s, 1960s, 1970s)"
   }
 }
 
-Important:
-- Return ONLY pure JSON. No markdown backticks, no markdown code fence, no commentary.
-- Do NOT invent facts. Only suggest metadata if clearly grounded in the narrative.
+Important Rules:
+- STRICT FIDELITY: Base your summary, keywords, and metadata ONLY on what is actually stated in the transcript and translation.
+- NEVER invent characters (e.g. "Shanti"), places (e.g. "Dhampur"), time periods, or fictional narratives.
+- If the recording is brief, conversational, or a greeting/test (e.g. "Hello, how are you?"), summarize it simply as such (e.g., "A brief conversational opening greeting and inquiry."). Never inflate it with fictional folklore.
+- If no specific region, topic, or time period is mentioned, leave those metadata fields empty or omit them.
+- Return ONLY pure JSON. No markdown backticks, no commentary.`;
 
-Transcript:
+    const userPrompt = `Transcript:
 """
 ${params.transcript}
 """
@@ -395,8 +447,11 @@ ${params.translation}
 """`;
 
     const rawContent = await this.callChatWithFallback({
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.1,
       response_format: { type: "json_object" },
       timeoutMs: 60000,
     });
@@ -429,8 +484,8 @@ ${invalidContent}
 
 Fix it and return a valid JSON object matching:
 {
-  "summary": "2-3 sentence editorial summary (string)",
-  "keywords": ["list of 3-6 relevant keywords"],
+  "summary": "1-3 sentence factual editorial summary reflecting strictly what was spoken",
+  "keywords": ["list of 2-5 relevant keywords"],
   "themeSlugs": ["1-3 slugs chosen from: ${params.existingThemes.join(", ")}"],
   "suggestedTheme": { "name": "string", "description": "string" },
   "suggestedMetadata": { "region": "string", "topic": "string", "timePeriod": "string" }
@@ -438,7 +493,8 @@ Fix it and return a valid JSON object matching:
 
 Important:
 - Output ONLY valid JSON.
-- Ensure 'keywords' contains at least 2 relevant cultural, emotional, or conversational keywords.`;
+- Do NOT invent fictional characters, villages or backstories.
+- Ensure 'keywords' contains at least 2 relevant keywords.`;
 
       const repairedText = await this.callChatWithFallback({
         messages: [{ role: "user", content: repairPrompt }],

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { AiProvider, getAiProvider } from "@/lib/ai/openrouter";
+import { AiProvider, getAiProvider, isLikelyEnglish } from "@/lib/ai/openrouter";
 import { fetchAudioBuffer } from "@/lib/storage";
 import { splitTextIntoChunks } from "./chunking";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -150,7 +150,8 @@ export async function runAiPipeline(
       try {
         const isEnglish =
           story.originalLanguage.toLowerCase() === "english" ||
-          story.originalLanguage.toLowerCase() === "en";
+          story.originalLanguage.toLowerCase() === "en" ||
+          isLikelyEnglish(transcript);
 
         if (isEnglish) {
           translation = transcript;
