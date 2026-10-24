@@ -11,6 +11,8 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
+  Zap,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +40,9 @@ export function AudioRecorder({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [volumeLevel, setVolumeLevel] = useState(0);
   const [isVoiceDetected, setIsVoiceDetected] = useState(false);
+  const [voiceDynamics, setVoiceDynamics] = useState<
+    "silent" | "gentle" | "clear" | "energetic"
+  >("silent");
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -47,6 +52,10 @@ export function AudioRecorder({
   const animationFrameRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  // Physics animation state for smooth music-equalizer bars
+  const smoothedHeightsRef = useRef<number[]>([]);
+  const peakHeightsRef = useRef<number[]>([]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -69,7 +78,7 @@ export function AudioRecorder({
     }
   };
 
-  // Live waveform visualizer with real-time voice volume detection
+  // Live music-equalizer waveform visualizer with real-time speech dynamics
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
@@ -78,74 +87,203 @@ export function AudioRecorder({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
     const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
+    const freqData = new Uint8Array(bufferLength);
+    const timeData = new Uint8Array(bufferLength);
     let lastStateUpdateTime = 0;
 
     const render = () => {
-      analyser.getByteFrequencyData(dataArray);
+      if (!analyserRef.current || !canvasRef.current) return;
 
-      // Compute RMS / Average volume for voice detection
-      let sum = 0;
+      analyser.getByteFrequencyData(freqData);
+      analyser.getByteTimeDomainData(timeData);
+
+      // 1. Calculate instant RMS audio volume for dynamic voice detection
+      let sumSquares = 0;
       for (let i = 0; i < bufferLength; i++) {
-        sum += dataArray[i];
+        const norm = (timeData[i] - 128) / 128; // -1 to +1
+        sumSquares += norm * norm;
       }
-      const avg = sum / bufferLength;
-      const currentVolume = Math.min(100, Math.round((avg / 75) * 100));
+      const rms = Math.sqrt(sumSquares / bufferLength);
+      const instantVolume = Math.min(100, Math.round(rms * 260));
+
+      // 2. Classify speech dynamics: "ruk" (pause/silent), "slow" (gentle), "clear", "tej" (high energy)
+      let dynamics: "silent" | "gentle" | "clear" | "energetic" = "silent";
+      if (instantVolume >= 52) {
+        dynamics = "energetic";
+      } else if (instantVolume >= 22) {
+        dynamics = "clear";
+      } else if (instantVolume >= 6) {
+        dynamics = "gentle";
+      } else {
+        dynamics = "silent";
+      }
 
       const now = performance.now();
-      if (now - lastStateUpdateTime > 90) {
+      if (now - lastStateUpdateTime > 80) {
         lastStateUpdateTime = now;
-        setVolumeLevel(currentVolume);
-        setIsVoiceDetected(currentVolume >= 7);
+        setVolumeLevel(instantVolume);
+        setIsVoiceDetected(instantVolume >= 6);
+        setVoiceDynamics(dynamics);
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 3. High-DPI Canvas scaling
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = canvas.clientWidth || 600;
+      const displayHeight = canvas.clientHeight || 140;
 
-      const barWidth = 6;
+      if (
+        canvas.width !== Math.round(displayWidth * dpr) ||
+        canvas.height !== Math.round(displayHeight * dpr)
+      ) {
+        canvas.width = Math.round(displayWidth * dpr);
+        canvas.height = Math.round(displayHeight * dpr);
+      }
+
+      ctx.save();
+      ctx.scale(dpr, displayHeight > 0 ? dpr : 1);
+      ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+      // Subtle center guideline behind equalizer
+      ctx.strokeStyle = "rgba(228, 218, 203, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(12, displayHeight / 2);
+      ctx.lineTo(displayWidth - 12, displayHeight / 2);
+      ctx.stroke();
+
+      // 4. Equalizer Bar geometry (Music Studio Waveform)
+      const barWidth = 4;
       const gap = 3;
-      const barCount = Math.floor(canvas.width / (barWidth + gap));
-      const step = Math.floor(bufferLength / barCount) || 1;
-      const hasVoice = currentVolume >= 7;
+      const totalSlot = barWidth + gap; // 7px per bar
+      const barCount = Math.max(12, Math.floor((displayWidth - 24) / totalSlot));
+      const startX = (displayWidth - (barCount * totalSlot - gap)) / 2;
+      const mid = Math.floor(barCount / 2);
+      const hasVoice = instantVolume >= 6;
+
+      // Ensure smoothed array size
+      if (smoothedHeightsRef.current.length !== barCount) {
+        smoothedHeightsRef.current = new Array(barCount).fill(4);
+        peakHeightsRef.current = new Array(barCount).fill(4);
+      }
+      const smoothed = smoothedHeightsRef.current;
+      const peaks = peakHeightsRef.current;
 
       for (let i = 0; i < barCount; i++) {
-        const val = dataArray[i * step] || 0;
-        const percent = val / 255;
-        // Responsive height: animated bounce if speaking, subtle idle wave if quiet
-        const minHeight = 6;
-        const height = Math.max(
-          minHeight,
-          percent * canvas.height * 0.9 + (hasVoice ? 4 : 0)
-        );
-        const x = i * (barWidth + gap);
-        const y = (canvas.height - height) / 2;
+        // Human vocal acoustic mapping:
+        // Speech core (vowels 300Hz-2kHz) in the center, harmonics & consonants (2kHz-4kHz) tapering out
+        const distFromCenter = Math.abs(i - mid) / (mid || 1);
+        const mappedBin = Math.floor(2 + (1 - Math.pow(distFromCenter, 1.2)) * 14 + distFromCenter * 24);
+        const binIndex = Math.min(bufferLength - 1, Math.max(1, mappedBin));
 
-        // Gradient: Emerald when voice detected, terracotta to saffron for timbre
-        const gradient = ctx.createLinearGradient(0, y, 0, y + height);
+        const freqVal = freqData[binIndex] || 0;
+        const timeVal = Math.abs((timeData[(i * 3) % bufferLength] || 128) - 128) / 128;
+
+        // Combined energy: frequency loudness + time wave ripple
+        const rawEnergy = (freqVal / 255) * 0.75 + (instantVolume / 100) * 0.25;
+
+        // Baseline resting idle wave when silent/paused
+        const idleWave = Math.sin(now * 0.0035 + i * 0.2) * 1.5;
+        const minHeight = 4 + (hasVoice ? 0 : idleWave);
+
+        // Height targets based on vocal loudness:
+        // Soft voice = 20-35px, Normal = 40-75px, Loud/High Energy = 80-120px
+        let targetHeight = minHeight;
         if (hasVoice) {
-          gradient.addColorStop(0, "#10B981"); // Emerald top
-          gradient.addColorStop(0.5, "#B5472B"); // Terracotta mid
-          gradient.addColorStop(1, "#E3A33B"); // Saffron bottom
+          const vocalScale = displayHeight * 0.88;
+          targetHeight = Math.max(
+            minHeight,
+            rawEnergy * vocalScale * (1 - distFromCenter * 0.3) + timeVal * 12
+          );
+        }
+
+        // Fast responsive rise, smooth organic falloff (DAW music equalizer physics)
+        if (targetHeight > smoothed[i]) {
+          smoothed[i] += (targetHeight - smoothed[i]) * 0.72; // instant snappy attack
         } else {
-          gradient.addColorStop(0, "#B5472B");
-          gradient.addColorStop(1, "#E3A33B");
+          smoothed[i] += (targetHeight - smoothed[i]) * 0.26; // graceful decay
+        }
+
+        const barHeight = Math.max(3, Math.min(displayHeight - 8, smoothed[i]));
+        const x = startX + i * totalSlot;
+        const y = (displayHeight - barHeight) / 2;
+
+        // Floating peak indicator
+        if (barHeight > peaks[i]) {
+          peaks[i] = barHeight;
+        } else {
+          peaks[i] = Math.max(barHeight, peaks[i] - 1.2);
+        }
+
+        // Gradient styling matching StoryKeeper warm palette
+        const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+        if (hasVoice) {
+          if (dynamics === "energetic") {
+            // Loud / Fast speech: Vibrant Terracotta to Saffron
+            gradient.addColorStop(0, "#B5472B");
+            gradient.addColorStop(0.5, "#E3A33B");
+            gradient.addColorStop(1, "#B5472B");
+          } else if (dynamics === "clear") {
+            // Clear Voice: Emerald top with Terracotta body
+            gradient.addColorStop(0, "#10B981");
+            gradient.addColorStop(0.5, "#E3A33B");
+            gradient.addColorStop(1, "#B5472B");
+          } else {
+            // Soft / Slow: Warm Saffron to Terracotta
+            gradient.addColorStop(0, "#E3A33B");
+            gradient.addColorStop(1, "#B5472B");
+          }
+        } else {
+          // Paused / Silent: Subtle line color
+          gradient.addColorStop(0, "rgba(209, 199, 183, 0.85)");
+          gradient.addColorStop(1, "rgba(228, 218, 203, 0.7)");
         }
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
         if (typeof ctx.roundRect === "function") {
-          ctx.roundRect(x, y, barWidth, height, 3);
+          ctx.roundRect(x, y, barWidth, barHeight, barWidth / 2);
         } else {
-          ctx.rect(x, y, barWidth, height);
+          ctx.rect(x, y, barWidth, barHeight);
         }
         ctx.fill();
+
+        // Music Equalizer: tiny floating peak dot above active bars
+        if (hasVoice && barHeight > 14 && peaks[i] > barHeight + 2) {
+          const peakY = (displayHeight - peaks[i]) / 2;
+          ctx.fillStyle = dynamics === "energetic" ? "#B5472B" : "#10B981";
+          ctx.beginPath();
+          ctx.arc(x + barWidth / 2, Math.max(3, peakY), 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
+      ctx.restore();
       animationFrameRef.current = requestAnimationFrame(render);
     };
 
     render();
   }, []);
+
+  // Synchronize visualizer loop with recording state
+  useEffect(() => {
+    if (state === "recording") {
+      drawWaveform();
+    } else if (state === "paused") {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [state, drawWaveform]);
 
   const startRecording = async () => {
     setErrorMessage(null);
@@ -180,7 +318,7 @@ export function AudioRecorder({
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.smoothingTimeConstant = 0.65; // Snappy musical reaction for speech cadence & pauses
       source.connect(analyser);
       analyserRef.current = analyser;
 
@@ -333,6 +471,9 @@ export function AudioRecorder({
     setElapsedSec(0);
     setVolumeLevel(0);
     setIsVoiceDetected(false);
+    setVoiceDynamics("silent");
+    smoothedHeightsRef.current = [];
+    peakHeightsRef.current = [];
     setErrorMessage(null);
   };
 
@@ -342,23 +483,50 @@ export function AudioRecorder({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {state === "recording" ? (
-            isVoiceDetected ? (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-xs">
+            voiceDynamics === "energetic" ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-terracotta/10 border border-terracotta/30 text-terracotta text-xs font-semibold shadow-xs">
+                <Zap className="w-3.5 h-3.5 fill-terracotta animate-pulse" />
+                <span>Speaking &bull; High Energy (Loud)</span>
+                <div className="flex items-center gap-0.5 ml-1">
+                  <span className="w-1 h-3.5 bg-terracotta rounded-full animate-bounce" />
+                  <span
+                    className="w-1 h-5 bg-terracotta rounded-full animate-bounce"
+                    style={{ animationDelay: "100ms" }}
+                  />
+                  <span
+                    className="w-1 h-3 bg-terracotta rounded-full animate-bounce"
+                    style={{ animationDelay: "200ms" }}
+                  />
+                </div>
+              </div>
+            ) : voiceDynamics === "clear" ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-xs">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
                 </span>
-                <span>Voice Detected &bull; Recording</span>
+                <span>Speaking &bull; Clear Voice</span>
                 <div className="flex items-center gap-0.5 ml-1">
                   <span className="w-1 h-3 bg-emerald-600 rounded-full animate-pulse" />
-                  <span className="w-1 h-4 bg-emerald-600 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1 h-2 bg-emerald-600 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+                  <span
+                    className="w-1 h-4 bg-emerald-600 rounded-full animate-pulse"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="w-1 h-2.5 bg-emerald-600 rounded-full animate-pulse"
+                    style={{ animationDelay: "300ms" }}
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-saffron/10 border border-saffron/30 text-ink text-xs font-medium">
+            ) : voiceDynamics === "gentle" ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-saffron/15 border border-saffron/40 text-ink text-xs font-medium">
                 <div className="w-2 h-2 rounded-full bg-saffron animate-pulse" />
-                <span>Listening... Speak into microphone</span>
+                <span>Speaking &bull; Soft Tone</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-paper-2 border border-line text-muted text-xs font-medium">
+                <div className="w-2 h-2 rounded-full bg-muted/60" />
+                <span>Silent (Paused) &bull; Awaiting Speech</span>
               </div>
             )
           ) : (
@@ -403,31 +571,55 @@ export function AudioRecorder({
       </div>
 
       {/* Waveform Canvas / Visualizer Box */}
-      <div className="relative h-28 sm:h-36 rounded-xl bg-paper border border-line flex items-center justify-center overflow-hidden shadow-inner">
-        {state === "recording" || state === "paused" ? (
-          <canvas
-            ref={canvasRef}
-            width={600}
-            height={140}
-            className="w-full h-full"
-          />
-        ) : state === "recorded" && previewUrl ? (
-          <div className="w-full px-6 flex flex-col items-center justify-center gap-3">
+      <div className="relative h-32 sm:h-40 rounded-xl bg-paper border border-line flex items-center justify-center overflow-hidden shadow-inner p-2">
+        {/* Live Audio Visualizer Canvas: ALWAYS mounted in DOM so canvasRef is ready */}
+        <canvas
+          ref={canvasRef}
+          className={`w-full h-full transition-opacity duration-200 ${
+            state === "recording" || state === "paused"
+              ? "opacity-100 block"
+              : "opacity-0 hidden"
+          }`}
+        />
+
+        {/* Live Audio Spectrum Equalizer Badge inside Canvas corner when recording */}
+        {state === "recording" && (
+          <div className="absolute top-2.5 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-paper/90 border border-line/80 text-[10px] font-mono text-muted backdrop-blur-xs pointer-events-none shadow-xs">
+            <Activity className="w-3 h-3 text-terracotta animate-pulse" />
+            <span>Voice Spectrum &bull; {volumeLevel}%</span>
+          </div>
+        )}
+
+        {/* Overlay for Recorded state */}
+        {state === "recorded" && previewUrl && (
+          <div className="absolute inset-0 px-6 flex flex-col items-center justify-center gap-3 bg-paper">
             <audio src={previewUrl} controls className="w-full max-w-md h-10" />
             <span className="text-xs text-muted-foreground">
               Preview your recording before saving
             </span>
           </div>
-        ) : isProcessingWav ? (
-          <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs">
+        )}
+
+        {/* Overlay for Audio Encoding state */}
+        {isProcessingWav && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground text-xs bg-paper">
             <Loader2 className="w-5 h-5 animate-spin text-terracotta" />
             <span>Encoding audio for transcription...</span>
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-muted-foreground text-xs text-center px-4">
+        )}
+
+        {/* Overlay for Idle / Requesting states */}
+        {(state === "idle" || state === "requesting") && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground text-xs text-center px-4 bg-paper">
             <Mic className="w-6 h-6 text-terracotta/60" />
             <span>
-              Click <strong>&ldquo;Start Recording&rdquo;</strong> to begin capturing your memory.
+              {state === "requesting" ? (
+                "Accessing microphone..."
+              ) : (
+                <>
+                  Click <strong>&ldquo;Start Recording&rdquo;</strong> to begin capturing your memory.
+                </>
+              )}
             </span>
           </div>
         )}
@@ -445,14 +637,22 @@ export function AudioRecorder({
             <div className="flex items-center justify-between text-[11px] font-medium">
               <span
                 className={
-                  isVoiceDetected
+                  voiceDynamics === "energetic"
+                    ? "text-terracotta font-semibold"
+                    : voiceDynamics === "clear"
                     ? "text-emerald-700 font-semibold"
+                    : voiceDynamics === "gentle"
+                    ? "text-ink font-medium"
                     : "text-muted"
                 }
               >
-                {isVoiceDetected
-                  ? "Microphone Input: Active (Voice Detected)"
-                  : "Microphone Input: Listening (Awaiting Speech...)"}
+                {voiceDynamics === "energetic"
+                  ? "Microphone Input: Speaking (High Energy / Loud)"
+                  : voiceDynamics === "clear"
+                  ? "Microphone Input: Active Speech Detected"
+                  : voiceDynamics === "gentle"
+                  ? "Microphone Input: Soft / Whispering Speech"
+                  : "Microphone Input: Silent / Paused (Awaiting Speech...)"}
               </span>
               <span className="font-mono text-muted text-[10px]">
                 {volumeLevel}%
