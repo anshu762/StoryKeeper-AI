@@ -198,7 +198,7 @@ export function WavesurferPlayer({
       </div>
 
       {/* Waveform Canvas Container */}
-      <div className="relative my-2 w-full">
+      <div className="relative my-2 w-full overflow-hidden rounded-xl">
         {!isReady && !hasError && (
           <div className="h-12 w-full rounded-xl bg-paper animate-pulse flex items-center justify-center text-xs text-muted">
             Generating audio waveform...
@@ -206,7 +206,7 @@ export function WavesurferPlayer({
         )}
         <div
           ref={containerRef}
-          className={cn("w-full transition-opacity duration-300", !isReady && "opacity-0 h-0")}
+          className={cn("w-full transition-opacity duration-300 min-h-[48px]", !isReady && "opacity-0 h-0")}
         />
         {hasError && (
           <audio

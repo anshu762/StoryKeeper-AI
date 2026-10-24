@@ -132,17 +132,22 @@ export function AudioRecorder({
         setVoiceDynamics(dynamics);
       }
 
-      // 3. High-DPI Canvas scaling
-      const dpr = window.devicePixelRatio || 1;
-      const displayWidth = canvas.clientWidth || 600;
-      const displayHeight = canvas.clientHeight || 140;
+      // 3. High-DPI Canvas scaling with scroll stabilization
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const displayWidth = Math.floor(canvas.clientWidth || 600);
+      const displayHeight = Math.floor(canvas.clientHeight || 140);
 
+      const targetWidth = Math.round(displayWidth * dpr);
+      const targetHeight = Math.round(displayHeight * dpr);
+
+      // Only resize canvas if dimensions actually changed by more than 2px
+      // (prevents continuous canvas buffer wiping during scrolling or subpixel shifts)
       if (
-        canvas.width !== Math.round(displayWidth * dpr) ||
-        canvas.height !== Math.round(displayHeight * dpr)
+        Math.abs(canvas.width - targetWidth) > 2 ||
+        Math.abs(canvas.height - targetHeight) > 2
       ) {
-        canvas.width = Math.round(displayWidth * dpr);
-        canvas.height = Math.round(displayHeight * dpr);
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
       }
 
       ctx.save();
@@ -166,10 +171,16 @@ export function AudioRecorder({
       const mid = Math.floor(barCount / 2);
       const hasVoice = instantVolume >= 6;
 
-      // Ensure smoothed array size
+      // Preserve existing smoothed heights during minor scroll or resize adjustments
       if (smoothedHeightsRef.current.length !== barCount) {
-        smoothedHeightsRef.current = new Array(barCount).fill(4);
-        peakHeightsRef.current = new Array(barCount).fill(4);
+        const prevSmoothed = smoothedHeightsRef.current;
+        const prevPeaks = peakHeightsRef.current;
+        smoothedHeightsRef.current = new Array(barCount)
+          .fill(4)
+          .map((v, idx) => prevSmoothed[idx] ?? 4);
+        peakHeightsRef.current = new Array(barCount)
+          .fill(4)
+          .map((v, idx) => prevPeaks[idx] ?? 4);
       }
       const smoothed = smoothedHeightsRef.current;
       const peaks = peakHeightsRef.current;

@@ -312,8 +312,8 @@ export function StoryReviewEditor({
         </div>
       </div>
 
-      {/* Pinned Audio Player on Top */}
-      <div className="sticky top-20 z-30 shadow-md">
+      {/* Audio Player: Firmly attached to the review card */}
+      <div className="w-full">
         <WavesurferPlayer
           audioUrl={signedAudioUrl}
           title={title}

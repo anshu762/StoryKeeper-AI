@@ -235,13 +235,13 @@ export default async function StoryDetailPage({ params }: StoryPageProps) {
           </div>
         </header>
 
-        {/* Sticky Accessible Waveform Audio Player */}
+        {/* Accessible Waveform Audio Player */}
         <section aria-label="Audio Recording">
           <WavesurferPlayer
             audioUrl={audioUrl}
             title={story.title}
             durationSec={story.audioDurationSec}
-            sticky={true}
+            sticky={false}
           />
         </section>
 
